@@ -1,0 +1,41 @@
+{
+  "name": "fastboard",
+  "version": "1.0.0",
+  "description": "build window-orientated dashaboards fast",
+  "main": "index.js",
+  "author": "nicelgueta",
+  "license": "MIT",
+  "dependencies": {
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.0",
+    "axios": "^1.5.0",
+    "framer-motion": "^11.0.13",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-grid-layout": "^1.4.4",
+    "react-icons": "^5.0.1",
+    "react-markdown": "^9.0.0",
+    "react-scripts": "5.0.1",
+    "remark-gfm": "^4.0.0",
+    "wouter": "^2.12.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
