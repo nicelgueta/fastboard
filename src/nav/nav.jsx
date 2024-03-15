@@ -13,27 +13,32 @@ import NavMenuSection from './menu-section';
 import NavConfig from "./config";
 import { useColorMode } from '@chakra-ui/color-mode';
 
-function NavMenu(props) {
+function NavMenu({
+  navOpen,
+  navClose,
+  btnRef,
+  appName
+}) {
     const { colorMode, } = useColorMode();
     const colorScheme = colorMode==="dark" ? "orange" : "cyan";
     return (
       <>
         <Drawer
-          isOpen={props.navOpen}
+          isOpen={navOpen}
           placement='left'
-          onClose={props.navClose}
-          finalFocusRef={props.btnRef}
+          onClose={navClose}
+          finalFocusRef={btnRef}
         >
           <DrawerOverlay />
           <DrawerContent>
             <DrawerCloseButton />
-            <DrawerHeader>e3 Menu</DrawerHeader>
+            <DrawerHeader>{appName}</DrawerHeader>
   
             <DrawerBody>
               <Accordion allowMultiple colorScheme={colorScheme}>
               {NavConfig.map(
                 (x,i)=>
-                <NavMenuSection key={`NavMenuSection-${i}`} navClose={props.navClose} {...x} />
+                <NavMenuSection key={`NavMenuSection-${i}`} navClose={navClose} {...x} />
                 )}
               </Accordion>
             </DrawerBody>

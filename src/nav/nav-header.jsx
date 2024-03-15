@@ -24,12 +24,10 @@ const NavHeader = (props) => {
             w="100%"
             textAlign="left" 
             templateColumns='repeat(20, 1fr)'
+            bg={colors.bgHalf}
         >
             <GridItem colSpan={1} padding={1} w={[300, 400, 500]}>
                 <HStack h="100%">
-                    {/* <Link to="/home">
-                        <Image objectFit='cover' w="200px" src="./botsorted-logo-transparent-dark.png" />
-                    </Link> */}
                     <Link to="/home">
                     <Heading
                         alignSelf={"center"}
@@ -43,17 +41,6 @@ const NavHeader = (props) => {
                     </Heading>
 
                     </Link>
-                    {/* <Stack direction="row">
-                        <Button colorScheme="orange" variant="ghost" isFullWidth>
-                            <Link to={"/home"}><Text>Home</Text></Link>
-                        </Button>
-                        <Button colorScheme="orange" variant="ghost" isFullWidth>
-                            <Link to={"/crypto"}><Text>Analytics</Text></Link>
-                        </Button>
-                        <Button colorScheme="orange" variant="ghost" isFullWidth>
-                            <Link to={"/data"}><Text>Data</Text></Link>
-                        </Button>
-                    </Stack> */}
                 </HStack>
             </GridItem>
             <GridItem colSpan={13}>
