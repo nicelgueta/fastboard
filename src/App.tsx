@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChakraProvider, VStack } from '@chakra-ui/react';
+import { ChakraProvider, VStack, useColorMode } from '@chakra-ui/react';
 
 import DashboardContainer from './layout/Main';
 

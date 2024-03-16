@@ -212,7 +212,9 @@ const TextSearch: React.FC<TextSearchProps> = ({
   w,
   h,
 }) => {
-  const [options, setOptions] = useState(items || []);
+  const [options, setOptions] = useState(items.sort(
+    (a, b) => a.label.localeCompare(b.label) 
+  ) || []);
   const [textValue, setTextValue] = useState("");
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
@@ -223,7 +225,7 @@ const TextSearch: React.FC<TextSearchProps> = ({
   const onTextChange = (text: string) => {
     const newOptions = _.filter(
       items,
-      (item) => item.label.toLowerCase().includes(text.toLowerCase())
+      (item) => item.label.toLowerCase().includes(text.toLowerCase()) || item.value.toLowerCase().includes(text.toLowerCase())
     );
     setOptions(newOptions);
   };

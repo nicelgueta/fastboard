@@ -6,7 +6,7 @@ export interface WidgetSetting {
     tooltip?: string;
     type: string;
     options?: (number | string)[];
-    default: number | string;
+    default?: number | string | boolean;
 }
 
 export interface BaseWidgetDict {
@@ -25,7 +25,7 @@ export interface WidgetDict extends BaseWidgetDict {
 }
 
 export interface BaseLayout {
-     x: number;
+    x: number;
     y: number;
 
     minW?: number;

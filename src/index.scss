@@ -1,0 +1,103 @@
+.fastboard-dark {
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(13deg, rgba(126, 82, 191, 0.25) 35%, rgba(126, 82, 191, 0.4) 65%);
+      border-radius: 5px;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(126, 82, 191, 1);
+    }
+    ::-webkit-scrollbar-track {
+      background: #171923;
+      background-clip: padding-box;
+      border-radius: 5px;
+      box-shadow: inset 7px 10px 12px #1A202C;
+    }
+  }
+  ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #000000 ;//linear-gradient(13deg, #ED8936 33%, #0BC5EA 75%);
+      border-radius: 5px;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #575d5f;
+    }
+    ::-webkit-scrollbar-track {
+      background: #171923;
+      background-clip: padding-box;
+      border-radius: 5px;
+      box-shadow: inset 7px 10px 12px #1A202C;
+    }
+  .fastboard-light {
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background:  linear-gradient(13deg, rgba(125, 121, 212,1) 35%, rgba(35, 32, 79,1) 65%);
+      border-radius: 5px;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(68, 124, 173,1);
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(125, 121, 212,0.3);
+      background-clip: padding-box;
+      height: 5px;
+      border-radius: 5px;
+      box-shadow: inset 7px 10px 12px rgba(22, 22, 33, 1);
+    }
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(128, 90, 213, 0.25);
+    border-radius: 5px;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(128, 90, 213, 0.8)
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(128, 90, 213, 0.10);
+    background-clip: padding-box;
+    border-radius: 5px;
+    box-shadow: inset 7px 10px 12px #1A202C;
+  }
+  .circle {
+    border-radius: 50%;
+    box-shadow: 0px 0px 1px 1px #0000001a;
+  }
+  
+  .pulse {
+    animation: pulse-animation 2s infinite;
+  }
+  @keyframes pulse-animation {
+    0% {
+      box-shadow: 0 0 0 0px rgba(255,0,0, 0.9);
+    }
+    100% {
+      box-shadow: 0 0 0 20px rgba(237, 136, 54, 0);
+    }
+  }
+  
+  .tradingview-widget-container {
+    position: relative;
+  }
+  .tradingview-widget-container:before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 34px;
+    background-color: #fff;
+  } 

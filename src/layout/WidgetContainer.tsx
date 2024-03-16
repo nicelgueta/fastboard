@@ -6,11 +6,14 @@ import { VscClose } from 'react-icons/vsc';
 import useAppColors from '../hooks/colors';
 import { stopPropagation } from '../hooks/stoppropagation';
 
+import { WidgetSetting } from '../interfaces';
+import Settings from '../components/Settings';
+
 interface WidgetContainerProps {
     name: string;
     wKey: string;
     isStatic: boolean;
-    settings: any; // You might want to specify the type more precisely
+    settings: WidgetSetting[];
     WidgetElement: React.ElementType;
     removeWidget: (key: string) => void;
     toggleStatic: (key: string) => void;
@@ -26,8 +29,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
     toggleStatic,
 }: WidgetContainerProps) => {
     const colors = useAppColors();
-    const [widgetSettings, setWidgetSettings] = useState(settings);
-    const [widgetElementProps, setWidgetElementProps] = useState(settings);
+    const [widgetSettings, setWidgetSettings] = useState<WidgetSetting[]>(settings);
     const [settingsIsOpen, setSettingsOpen] = useState(false);
     const [isLargerThan1280] = useMediaQuery('(min-width: 1280px)');
 
@@ -67,7 +69,10 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
                         _hover={{ bgColor: colors.fore, color: colors.bg }}
                     />
                     <ModalBody paddingTop={5}>
-                        <h3>settings here</h3>
+                        <Settings 
+                            widgetSettings={widgetSettings}
+                            setWidgetSettings={setWidgetSettings}
+                        />
                     </ModalBody>
 
                     <ModalFooter>
@@ -163,7 +168,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
                     </ButtonGroup>
                 </HStack>
                 <div style={{ height: "100%", width: "100%", overflow: "auto" }} id={`${wKey}-div-container`}>
-                    <WidgetElement {...widgetElementProps} />
+                    <WidgetElement {...widgetSettings} />
                 </div>
             </VStack>
         </Box>

@@ -8,7 +8,6 @@ import {
     VStack,
     Box,
     Text,
-    useToast
 } from '@chakra-ui/react';
 import { stopPropagation } from '../hooks/stoppropagation';
 import { Icon, Tooltip } from '@chakra-ui/react';
@@ -16,6 +15,7 @@ import { AiFillEye, AiFillPushpin } from 'react-icons/ai';
 import GridLayout from 'react-grid-layout';
 import useAppColors from '../hooks/colors';
 import WidgetContainer from './WidgetContainer';
+
 import { 
     ALL_WIDGETS, 
     widgetObjReference,
@@ -29,6 +29,7 @@ import {
     WidgetDict,
     Layout
 } from '../interfaces';
+import useCustomToast from '../hooks/useCustomToast';
 
 interface DashboardContainerProps {
     appName: string;
@@ -48,6 +49,8 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
     const colors = useAppColors();
     const { colorMode } = useColorMode();
 
+    const toast  = useCustomToast()
+
     const [snackOpen, setSnackOpen] = useState<boolean>(false);
     const [introOpen, setOpenIntro] = useState<boolean>(false);
 
@@ -61,6 +64,26 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
 
     const addWidget = (type: string) => {
         const widgetDict = ALL_WIDGETS.find(widget => widget.type === type);
+        if (!widgetDict) {
+            toast(
+                "Widget not found",
+                "fail",
+                `The widget ${type} was not found - are you sure this has been implemented?`
+            );
+            return;
+        }
+        const maxNo = widgetDict?.maxNo || 0;
+        // if maxNo reached then disallow
+        const existingWidgetCount = widgets.filter(widget => widget.type === type).length;
+        if (existingWidgetCount >= maxNo) {
+            toast(
+                "Too many widgets",
+                "fail",
+                `You cannot have more than ${existingWidgetCount} ${widgetDict.name} widget(s)`
+            );
+            return;
+        }
+
         if (widgetDict) {
             const widgeTypeNumber = new Date().getTime();
             const key = `${type}-${widgeTypeNumber}`;
@@ -73,6 +96,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         }
     };
 
+
     const toggleStatic = (key: string) => {
         const newLayouts = layout.map(item =>
             item.i === key ? { ...item, static: !item.static } : item
@@ -84,8 +108,9 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         return layout.find(item => item.i === key);
     };
 
+    // console.log(layout)
     return (
-        <Box w={"100%"} h={"100%"}>
+        <Box w={"100%"} h={"100%"} className={`fastboard-${colorMode}`}>
             <title>{appName}</title>
             <GridLayout
                 className="layout"
