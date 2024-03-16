@@ -1,19 +1,20 @@
-import {
-    Button
-} from '@chakra-ui/react';
+import React from 'react';
+import { Button, ButtonProps } from '@chakra-ui/react';
 import useAppColors from '../hooks/colors';
 
+export type bType = 'success' | 'warning' | 'fail' | 'action';
 
-export default ({
-    type,
-    onClick,
-    children,
-    ...props
-}) => {
+interface BuProps extends ButtonProps {
+    bType: bType;
+    onClick: () => void;
+    children: React.ReactNode;
+}
+
+const Bu: React.FC<BuProps> = ({ bType, onClick, children, ...props }) => {
     const colors = useAppColors();
 
-    const button_configs = {
-        "success": {
+    const buttonConfigs: Record<string, ButtonProps> = {
+        success: {
             bg: colors.success3Quarter,
             textColor: colors.fore,
             borderColor: colors.success,
@@ -21,9 +22,9 @@ export default ({
             borderWidth: 1,
             _hover: {
                 bg: colors.success,
-            }
+            },
         },
-        "warning": {
+        warning: {
             bg: colors.warning3Quarter,
             textColor: colors.fore,
             borderColor: colors.warning,
@@ -32,9 +33,9 @@ export default ({
                 bg: colors.warning,
                 textColor: colors.fore,
                 borderColor: colors.fore,
-            }
+            },
         },
-        "fail": {
+        fail: {
             bg: colors.fail3Quarter,
             textColor: colors.fore,
             borderColor: colors.fail,
@@ -43,9 +44,9 @@ export default ({
                 bg: colors.fail,
                 textColor: colors.fore,
                 borderColor: colors.fore,
-            }
+            },
         },
-        "action": {
+        action: {
             bg: colors.foreActive3Quarter,
             textColor: colors.fore,
             borderColor: colors.foreActive,
@@ -54,16 +55,19 @@ export default ({
                 bg: colors.foreActive,
                 textColor: colors.fore,
                 borderColor: colors.fore,
-            }
+            },
         },
-    }
+    };
+
     return (
         <Button
-            {...button_configs[type]}
+            {...buttonConfigs[bType]}
             {...props}
             onClick={onClick}
         >
             {children}
         </Button>
-    )
-}
+    );
+};
+
+export default Bu;

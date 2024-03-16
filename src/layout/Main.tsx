@@ -115,6 +115,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                         menuOpen={menuOpen}
                         addWidget={addWidget}
                         allWidgets={ALL_WIDGETS}
+                        boards={[]}
                         appName={appName}
                     />
                     <NavMenu 

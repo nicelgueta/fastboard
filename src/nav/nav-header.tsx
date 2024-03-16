@@ -5,7 +5,7 @@ import { MdAccountCircle, MdMenu } from 'react-icons/md';
 import { AiOutlineGithub } from 'react-icons/ai';
 import { useColorMode } from '@chakra-ui/color-mode';
 import useAppColors from '../hooks/colors';
-import TextSearch from '../components/TextSearch';
+import TextSearch,  { OptionItem } from '../components/TextSearch';
 import Button from '../components/Button'; 
 
 import {
@@ -17,7 +17,7 @@ interface NavHeaderProps {
   menuOpen: boolean;
   addWidget: (wKey: string) => void; 
   allWidgets: BaseWidgetDict[]; 
-  boards?: SavedBoard[]; 
+  boards: SavedBoard[]; 
   appName: string;
 }
 
@@ -33,12 +33,12 @@ const NavHeader: React.FC<NavHeaderProps> = ({
   const colors = useAppColors();
   const txtColor = colors.fore;
 
-  const allWidgetItems = allWidgets.map((widget, i) => ({
+  const allWidgetItems: OptionItem[] = allWidgets.map((widget, i) => ({
     label: widget.name,
     value: widget.type
   }));
 
-  const layoutItems = boards?.map((board, i) => ({
+  const layoutItems: OptionItem[] = boards.map((board, i) => ({
     label: board.name,
     value: board.key
   }));
@@ -47,6 +47,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({
     <Grid textAlign="left" templateColumns='repeat(20, 1fr)' bg={colors.bgHalf}>
       <GridItem colSpan={1} padding={1}>
         <HStack h="100%">
+          <Center>
             <Heading
                 alignSelf="center"
                 h="100%"
@@ -57,6 +58,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({
             >
                 {appName}
             </Heading>
+          </Center>
         </HStack>
       </GridItem>
       <GridItem colSpan={3} padding={1}>
@@ -72,7 +74,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({
               buttonType="warning"
             />
             <Button
-              type="action"
+              bType="action"
               h="85%"
               onClick={() => alert('save layout')}
             >
@@ -114,7 +116,11 @@ const NavHeader: React.FC<NavHeaderProps> = ({
           >
             <AiOutlineGithub size={30} />
           </IconButton>
-          <ColorModeSwitcher color={txtColor} justifySelf="flex-end" />
+          <ColorModeSwitcher 
+            aria-label='color-mode-switcher'
+            color={txtColor} 
+            justifySelf="flex-end" 
+          />
         </HStack>
       </GridItem>
     </Grid>

@@ -1,8 +1,19 @@
-import { AiOutlineApi, AiOutlineFund } from "react-icons/ai";
-import { FaBitcoin, FaDatabase, FaHome, FaInfo } from "react-icons/fa";
-import { SiApacheairflow, SiReadthedocs } from 'react-icons/si';
+import { FaHome, FaInfo } from "react-icons/fa";
+import { SiReadthedocs } from 'react-icons/si';
 
-const config = [
+interface Subsection {
+    name: string;
+    link: string;
+    linkDisabled: boolean;
+    icon: React.ElementType;
+}
+
+interface ConfigItem {
+    header: string;
+    subsections: Subsection[];
+}
+
+const config: ConfigItem[] = [
     {
         header: "Home",
         subsections: [
@@ -26,7 +37,6 @@ const config = [
             // },
         ]
     },
-
-]
+];
 
 export default config;
