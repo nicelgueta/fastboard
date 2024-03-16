@@ -8,11 +8,10 @@ import {
   PopoverContent,
   Text,
   HStack,
-  InputProps,
   PopoverProps,
 } from "@chakra-ui/react";
 import useAppColors from "../hooks/colors";
-
+import useCustomToast from "../hooks/useCustomToast";
 import Bu, { bType } from "./Button";
 
 export interface OptionItem {
@@ -217,6 +216,8 @@ const TextSearch: React.FC<TextSearchProps> = ({
   const [textValue, setTextValue] = useState("");
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
+  const toast = useCustomToast();
+
   const colors = useAppColors();
 
   const onTextChange = (text: string) => {
@@ -229,7 +230,10 @@ const TextSearch: React.FC<TextSearchProps> = ({
 
   const search = () => {
     if (!selectedItem) {
-      alert("No item selected");
+      toast(
+          "No item selected",
+          "fail",
+      );
       return;
     }
     callback(selectedItem);
