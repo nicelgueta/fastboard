@@ -2,13 +2,15 @@
   "name": "fastboard",
   "version": "1.0.0",
   "description": "build window-orientated dashaboards fast",
-  "main": "index.js",
+  "main": "index.tsx",
   "author": "nicelgueta",
   "license": "MIT",
   "dependencies": {
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.0",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
     "axios": "^1.5.0",
     "framer-motion": "^11.0.13",
     "react": "^18.2.0",
@@ -37,5 +39,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "source-map-loader": "^5.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.4.2"
   }
 }
