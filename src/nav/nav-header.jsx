@@ -6,27 +6,49 @@ import React from "react";
 import { useColorMode } from '@chakra-ui/color-mode';
 import useAppColors from "../hooks/colors";
 import { 
-    Button, 
-    Image, 
-    IconButton, 
-    Slide,
-    Stack,
-    Text,
-    Link
+    Center,
+    Link,
+    IconButton,
+    Button
 } from '@chakra-ui/react';
 
-const NavHeader = (props) => {
+// app components
+import TextSearch from "../components/TextSearch";
+import Bu from "../components/Button";
+
+const NavHeader = ({
+    toggleNav,
+    menuOpen,
+    addWidget,
+    allWidgets,
+    layouts,
+    appName
+}) => {
+
     const { colorMode, } = useColorMode();
     const colors = useAppColors();
     const txtColor = colors.fore
+    const allWidgetItems = allWidgets.map((widget, i)=>{
+        return {
+            label: widget.name,
+            value: widget.type
+        }
+    })
+
+    const layoutItems = layouts?.map((layout, i)=>{
+        return {
+            label: layout.name,
+            value: layout.type
+        }
+    })
+
     return (
-        <Grid 
-            w="100%"
+        <Grid            
             textAlign="left" 
             templateColumns='repeat(20, 1fr)'
             bg={colors.bgHalf}
         >
-            <GridItem colSpan={1} padding={1} w={[300, 400, 500]}>
+            <GridItem colSpan={1} padding={1}>
                 <HStack h="100%">
                     <Link to="/home">
                     <Heading
@@ -37,18 +59,56 @@ const NavHeader = (props) => {
                         bgClip='text'
                         bgGradient={`linear(to-r, ${colors.fore}, ${colors.fore})`}                    
                     >
-                        Home            
+                        {appName}            
                     </Heading>
 
                     </Link>
                 </HStack>
             </GridItem>
-            <GridItem colSpan={13}>
+            <GridItem colSpan={3} padding={1}>
+                <Center w="100%" h="100%">
+                    <HStack
+                        w="100%"
+                        h="100%"
+                        spacing={1}
+                    >
+                        <TextSearch
+                            w="100%"
+                            h="85%"
+                            placeholder="Layout"
+                            items={layoutItems}
+                            callback={()=>alert('load layout')}
+                            buttonText="LOAD"
+                            buttonType="warning"
+                        />
+                        <Bu
+                            type="action"
+                            h="85%"
+                            onClick={()=>alert('save layout')}
+
+                        >
+                            SAVE
+                        </Bu>
+                    </HStack>
+                </Center>
             </GridItem>
-            <GridItem justifySelf="flex-end" colSpan={6}>
+            <GridItem colSpan={3} padding={1}>
+                <Center w="100%" h="100%">
+                    <TextSearch
+                        w="100%"
+                        h="85%"
+                        placeholder="Tool"
+                        items={allWidgetItems}
+                        callback={addWidget}
+                        buttonText="ADD"
+                        buttonType="success"
+                    />
+                </Center>
+            </GridItem>
+            <GridItem justifySelf="flex-end" colSpan={13}>
                 <HStack>
                     <IconButton variant="ghost" size="sm" color={txtColor}
-                        onClick={()=>props.toggleNav(!props.menuOpen)}
+                        onClick={()=>toggleNav(!menuOpen)}
                         
                     ><MdMenu size={30} /></IconButton>
                     {/* <IconButton 

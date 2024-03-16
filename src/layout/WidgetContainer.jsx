@@ -29,9 +29,9 @@ import { stopPropagation } from '../hooks/stoppropagation';
 const WidgetContainer = ({
     name,
     wKey,
+    isStatic,
     settings,
     WidgetElement,
-    widgetLayout,
     removeWidget,
     toggleStatic,
 }) => {
@@ -43,16 +43,16 @@ const WidgetContainer = ({
 
     const [ settingsIsOpen, setSettingsOpen ] = React.useState(false);
     const [isLargerThan1280] = useMediaQuery('(min-width: 1280px)');
-    
-    React.useEffect(()=>{
-        // overrides if on a phone
-        if (!isLargerThan1280 && !widgetLayout.static){
-            toggleStatic(wKey)
-        }
-    }, [])
-
     return (
-        <div style={{height: "100%", width: "100%", maxWidth: "100%", maxHeight: "100%", padding: 5}}>
+        <Box 
+            w={"100%"}
+            h={"100%"}
+            bgColor={colors.bg}
+            textColor={colors.fore}
+            borderWidth={1}
+            borderColor={colors.foreActiveQuarter}
+            borderRadius={0}
+        >
             <Modal isOpen={settingsIsOpen} onClose={()=>setSettingsOpen(false)}>
                 <ModalOverlay />
                 <ModalContent 
@@ -155,7 +155,7 @@ const WidgetContainer = ({
                             _hover={{bg: colors.fore, color: colors.bg, borderColor: colors.bg}}
                             _active={{bg: colors.foreActive, color: colors.bg, borderColor: colors.bg}}
                             icon={<AiFillPushpin />}
-                            isActive={isLargerThan1280 ? widgetLayout.static : true}
+                            isActive={isLargerThan1280 ? isStatic : true}
                             disabled={!isLargerThan1280} //cannot move if on phone
                             borderColor={colors.bgDark} 
                             borderRadius={0}
@@ -185,7 +185,7 @@ const WidgetContainer = ({
             </div>
             </VStack>
             
-        </div>
+        </Box>
     )
 }
 

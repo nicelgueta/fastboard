@@ -16,92 +16,24 @@ import { AiFillEye, AiFillPushpin } from 'react-icons/ai';
 import GridLayout from 'react-grid-layout';
 import useAppColors from '../hooks/colors';
 import WidgetContainer from './WidgetContainer';
+import { ALL_WIDGETS, widgetObjReference } from '../widgets';
 
-// widgets
-import RedditFeed from '../widgets/Reddit';
+// nav
+import NavHeader from '../nav/nav-header';
+import NavMenu from '../nav/nav';
 
-const ALL_WIDGETS = [
-    {
-        type: 'redditStream',
-        disabled: false,
-        name: 'Reddit Stream',
-        description: `
-            Configure a live stream for data from reddit. Future
-            functionality for this tool will allow you to 
-            perform more advanced analytics such as VADER sentiment analysis and 
-            real-time aggregation.`,
-        maxNo: 20,
-        maxH: 96,
-        w: 10,
-        h: 10,
-        minW: 7,
-        minH: 8,
-        settings:[
-            {
-                label: "Search terms",
-                settingsKey: "q",
-                tooltip: `
-                    Enter any number of search terms here. Max characters 512.
-                    This is the only mandatory field.
-                `,
-                type: "free_text",
-                default: ""
-            },
-            {
-                label: "Max number of posts",
-                settingsKey: "limit",
-                type: "select",
-                options: [1,2,5,10,15,20,25,30,50,100],
-                default: 25
-            },
-            {
-                label: "Sort by",
-                settingsKey: "sort",
-                type: "select",
-                options: ["relevance", "hot", "top", "new", "comments"],
-                default: "relevance"
-            },
-            {
-                label: "From last",
-                settingsKey: "t",
-                type: "select",
-                options: ["hour", "day", "week", "month", "year", "all"],
-                default: "day"
-            },
-
-        ]
-    },
-    {
-        type: 'default',
-        disabled: false,
-        name: 'Blank',
-        description: `
-            This is a blank widget. You can add more widgets by clicking the 
-            "Add Widget" button in the top right corner of the screen.
-        `,
-        maxNo: 20,
-        maxH: 96,
-        w: 10,
-        h: 10,
-        minW: 7,
-        minH: 8,
-        settings:[]
-    }
-]
-
-const widgetObjReference = {
-    redditStream: RedditFeed,
-    default: () => <Text>Blank</Text>
-}
 
 const DashboardContainer = ({
     appName,
 }) => {
 
     const [isLargerThan1280] = useMediaQuery('(min-width: 1280px)');
-
+    const [menuOpen, setMenuOpen] = React.useState(false);
+    const toggleMenuOpen = () => setMenuOpen(!menuOpen);
     const [widgets, setWidgets] = React.useState([]);
-    const [layout, setLayout] = React.useState([]);
+    const [layout, setLayout] = React.useState([
+        {i: "rg-header", x: 0, y: 0, w: 48, h: 2, static: true }
+    ]);
 
     const colors = useAppColors();
     const {colorMode, } = useColorMode();
@@ -111,12 +43,12 @@ const DashboardContainer = ({
     const [ introOpen, setOpenIntro ] = React.useState(false);
     
 
-    React.useEffect(()=>{
-        // if no widgets, add a default one
-        if (widgets.length === 0){
-            addWidget('default')
-        }
-    }, [])
+    // React.useEffect(()=>{
+    //     // if no widgets, add a default one
+    //     if (widgets.length === 0){
+    //         addWidget('testpad')
+    //     }
+    // }, [])
 
     const removeWidget = (key) => {
 
@@ -130,16 +62,13 @@ const DashboardContainer = ({
                 let newWidgets = [].concat(widgets)
                 newWidgets.splice(i, 1);
                 setWidgets(newWidgets)
-            }
-        
-        }
-        // layout
-        for( let i = 0; i < layout.length; i++){ 
-            if ( layout[i].i === key) {
-                let newLayout = [].concat(layout)
-                newLayout.splice(i, 1);
+
+                // layout
+                let newLayout = layout.filter(x=>x.i!==key)
                 setLayout(newLayout)
             }
+
+        
         }
     }
     const addWidget = (type) => {
@@ -158,56 +87,82 @@ const DashboardContainer = ({
         // console.log('Key: '+key)
         newWidgeDict['typeNumber'] = widgeTypeNumber
         newWidgeDict['key'] = key;
-        // console.log(widgets)
-        // make update
-        const newLayoutItem = {
-            i: key, 
-            x: 12, 
-            y: 0, 
-            w: newWidgeDict.w || 15, 
-            h: newWidgeDict.h || 10, 
-            minH: newWidgeDict.minH || 5, 
-            minW: newWidgeDict.minW || 5,
-            maxH: newWidgeDict.maxH || 20, 
-            maxW: newWidgeDict.maxW || 30,
-            static: false
-            
-        };
-        let newlayout = [...layout].concat([newLayoutItem])
+
+        let wLayout = {...newWidgeDict.defaultLayout}
+        wLayout['i'] = key
+        
+        let newlayout = [...layout].concat([wLayout])
         setLayout(newlayout)
+
         let newWidgets = [...widgets].concat([newWidgeDict])
         setWidgets(newWidgets)
 
     }
     const toggleStatic = (key) => {
-        const mainLayout = layout.filter(x=>x.i === key)[0];
-        const newMainLayout = {...mainLayout, static: !mainLayout.static};
+        const widgeLayout = getLayout(key);
+        const newWidgeLayout = {...widgeLayout, static: !widgeLayout.static};
         const newPageLayout = layout.filter(x=>x.i !== key);
-        setLayout(newPageLayout.concat([newMainLayout]));
+        setLayout(newPageLayout.concat([newWidgeLayout]))
     }
-    console.log('layout: '+JSON.stringify(layout))
-    console.log('widgets: '+JSON.stringify(widgets))
+
+    const getLayout = (key) => {
+        for( let i = 0; i < layout.length; i++){ 
+            if ( layout[i].i === key) {
+                return layout[i]
+            }
+        }
+    }
+
+    // console.log(layout)
+    // console.log(widgets)
     return (
-        <>
-        <title>{appName}</title>
         <Box w={"100%"} h={"100%"}>
+            <title>{appName}</title>
             <GridLayout
-                    className="layout" 
-                    layout={layout}
-                    
-                    // if on a phone, have each widget stacked on each other
-                    // the free desktop-style layout isn't user-friendly
-                    cols={isLargerThan1280 ? 48 : 1} 
-                    rowHeight={20} 
-                    width={isLargerThan1280 ? 1920 : window.screen.availWidth}
-                    margin={[1,1]}
-                    preventCollision
-                    compactType={null}
-                    onLayoutChange={(newLayout)=>setLayout(newLayout)}
+                className="layout" 
+
+                layout={layout}
+                height={Math.min(1080, window.screen.availHeight)}
+                // if on a phone, have each widget stacked on each other
+                // the free desktop-style layout isn't user-friendly
+                cols={isLargerThan1280 ? 48 : 1} 
+                rowHeight={20} 
+                width={Math.min(1920, window.screen.availWidth)}
+                margin={[0,0]}
+                preventCollision
+                compactType={null}
+                resizeHandles={
+                    ['s', 'e', 'se', 'sw',  'nw', 'w', 'n']
+                }
+                onLayoutChange={(lo) => {
+                    setLayout(lo)
+                }}
             >
+                <div 
+                    key="rg-header" 
+                    className='rg-header-nav'
+                    style={{
+                        borderRadius: 0,
+                        // overflow: "auto",
+                        justifyContent: "center",
+                        borderColor: colors.foreQuarter,
+                        borderWidth: 1,
+                        zIndex: 4,            
+                    }}
+                >
+                    <NavHeader 
+                        toggleNav={toggleMenuOpen} 
+                        menuOpen={menuOpen} 
+                        addWidget={addWidget}
+                        allWidgets={ALL_WIDGETS}
+                        appName={appName}
+                    />
+                    <NavMenu navOpen={menuOpen} navClose={toggleMenuOpen} appName={appName} />
+                </div>
                 {
                     widgets.map((widgeDict,i)=>
                     <div 
+                        key={widgeDict.key}
                         style={{
                             borderRadius: 0,
                             backgroundColor: colors.bg,
@@ -215,25 +170,23 @@ const DashboardContainer = ({
                             justifyContent: "center",
                             height:"100%",
                             width: "100%",
-                            borderColor: colors.foreQuarter,
-                            borderWidth: 1
-                        }}  
-                        key={widgeDict.key}
+                            borderColor: colors.bg,
+                            // borderWidth: 1
+                        }}
                     >
-                        {<WidgetContainer 
-                            {...widgeDict}
+                        <WidgetContainer 
+                            name={widgeDict.name}
                             wKey={widgeDict.key}
+                            settings={widgeDict.settings}
+                            isStatic={getLayout(widgeDict.key).static}
                             WidgetElement={widgetObjReference[widgeDict.type]}
-                            widgetLayout={layout.filter(x=>x.i===widgeDict.key)[0]}
                             removeWidget={removeWidget}
                             toggleStatic={toggleStatic}
-                        />}
-                    </div>
-                    )
+                        />
+                    </div>)
                 }
             </GridLayout>
         </Box>
-        </>
     )
 }
 

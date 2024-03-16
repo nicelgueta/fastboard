@@ -1,24 +1,19 @@
 import React from 'react';
 import { 
-    ChakraProvider
+    ChakraProvider, VStack
 } from '@chakra-ui/react';
 
-import NavHeader from './nav/nav-header';
-import NavMenu from './nav/nav';
-
-import Main from './layout/Main';
+import DashboardContainer from './layout/Main';
 
 const App = () => {
     const appName = "FastBoard";
-    const [menuOpen, setMenuOpen] = React.useState(false);
-    const toggleMenuOpen = () => setMenuOpen(!menuOpen);
     return (
         <ChakraProvider>
-            <NavHeader toggleNav={toggleMenuOpen} menuOpen={menuOpen}/>
-            <NavMenu navOpen={menuOpen} navClose={toggleMenuOpen} appName={appName} />
-            <Main 
-                appName={appName}
-            />
+            <VStack h={"100%"} w={"100%"}>
+                <DashboardContainer 
+                    appName={appName}
+                />
+            </VStack>
         </ChakraProvider>
     )
 }
