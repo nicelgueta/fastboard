@@ -10,8 +10,8 @@ import {
     Tooltip
 
 } from "@chakra-ui/react";
-import useAppColors from "../hooks/colors";
-import { componentType } from "./common";
+import useAppColors from "../../hooks/colors";
+import { componentType } from "../common";
 
 interface FBSliderProps extends SliderProps {
     typ: componentType

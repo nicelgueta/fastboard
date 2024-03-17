@@ -9,12 +9,12 @@ import TradingViewChart from './tradingview';
 
 import { BaseWidgetDict, BaseLayout } from '../interfaces';
 
-import FBInput from '../components/Input';
-import FBNumberInput from '../components/NumberInput';
-import FBSelect from '../components/Select';
-import FBSwitch from '../components/Switch';
-import FBMultiSelect from '../components/MultiSelect';
-import FBSlider from '../components/Slider';
+import FBInput from '../components/primitive/Input';
+import FBNumberInput from '../components/primitive/NumberInput';
+import FBSelect from '../components/primitive/Select';
+import FBSwitch from '../components/primitive/Switch';
+import FBMultiSelect from '../components/primitive/MultiSelect';
+import FBSlider from '../components/primitive/Slider';
 import { MdGraphicEq } from 'react-icons/md';
 
 

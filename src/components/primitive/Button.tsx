@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button, ButtonProps } from '@chakra-ui/react';
-import useAppColors from '../hooks/colors';
+import useAppColors from '../../hooks/colors';
 
-import { componentType } from './common';
+import { componentType } from '../common';
 
 interface BuProps extends ButtonProps {
     typ: componentType;

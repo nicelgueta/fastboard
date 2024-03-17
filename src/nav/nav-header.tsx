@@ -6,7 +6,7 @@ import { AiOutlineGithub } from 'react-icons/ai';
 import { useColorMode } from '@chakra-ui/color-mode';
 import useAppColors from '../hooks/colors';
 import TextSearch,  { OptionItem } from '../components/TextSearch';
-import FBIconButton from '../components/IconButton';
+import FBIconButton from '../components/primitive/IconButton';
 import { VscSave, VscSaveAs } from "react-icons/vsc";
 import {
     BaseWidgetDict, Layout, Board, WidgetDict

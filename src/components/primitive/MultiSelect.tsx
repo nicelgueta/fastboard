@@ -3,8 +3,8 @@ import {
     Menu, MenuButton, MenuOptionGroup, MenuItemOption, MenuList, Button
 } from '@chakra-ui/react';
 
-import { componentType } from './common';
-import useAppColors from '../hooks/colors';
+import { componentType } from '../common';
+import useAppColors from '../../hooks/colors';
 
 interface Option {
     value: string;

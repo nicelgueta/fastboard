@@ -1,7 +1,7 @@
 import React from "react";
 import { Center, Select, SelectProps } from "@chakra-ui/react";
-import useAppColors from "../hooks/colors";
-import { componentType } from "./common";
+import useAppColors from "../../hooks/colors";
+import { componentType } from "../common";
 
 export interface FBSelectProps extends SelectProps {
     typ: componentType;

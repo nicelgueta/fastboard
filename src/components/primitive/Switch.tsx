@@ -1,6 +1,6 @@
 import React from "react";
 import { HStack, Switch, SwitchProps, Text } from "@chakra-ui/react";
-import useAppColors from "../hooks/colors";
+import useAppColors from "../../hooks/colors";
 
 interface FBSwitchProps extends SwitchProps {
     typ: string;

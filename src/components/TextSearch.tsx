@@ -12,7 +12,7 @@ import {
 } from "@chakra-ui/react";
 import useAppColors from "../hooks/colors";
 import useCustomToast from "../hooks/useCustomToast";
-import FBButton from "./Button";
+import FBButton from "./primitive/Button";
 import { componentType } from "./common";
 
 export interface OptionItem {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { IconButton, IconButtonProps } from '@chakra-ui/react';
-import useAppColors from '../hooks/colors';
-import { componentType } from './common';
+import useAppColors from '../../hooks/colors';
+import { componentType } from '../common';
 
 interface IconBuProps extends IconButtonProps {
     typ: componentType;
