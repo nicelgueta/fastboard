@@ -33,6 +33,7 @@ interface DropdownProps extends PopoverProps {
   bg?: string;
   textColor?: string;
   placeholder?: string;
+  showlabel?: boolean;
 }
 
 const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
@@ -51,6 +52,7 @@ const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
       bg,
       textColor,
       placeholder,
+      showlabel
     },
     ref
   ) => {
@@ -201,6 +203,8 @@ interface TextSearchProps {
   buttonType: bType;
   w?: string;
   h?: string;
+  clearOnSelect?: boolean;
+  showlabel?: boolean;
 }
 
 const TextSearch: React.FC<TextSearchProps> = ({
@@ -211,6 +215,8 @@ const TextSearch: React.FC<TextSearchProps> = ({
   buttonType,
   w,
   h,
+  clearOnSelect,
+  showlabel
 }) => {
   const [options, setOptions] = useState(items.sort(
     (a, b) => a.label.localeCompare(b.label) 
@@ -239,8 +245,10 @@ const TextSearch: React.FC<TextSearchProps> = ({
       return;
     }
     callback(selectedItem);
-    setTextValue("");
-    setSelectedItem(null);
+    if (clearOnSelect) {
+      setTextValue("");
+      setSelectedItem(null);
+    }
   };
   return (
     <HStack w={w} h={h}>
@@ -257,6 +265,7 @@ const TextSearch: React.FC<TextSearchProps> = ({
         placeholder={placeholder}
         h="100%"
         w="100%"
+        showlabel={showlabel}
       />
       <Bu bType={buttonType} h="95%" onClick={search}>
         {buttonText}

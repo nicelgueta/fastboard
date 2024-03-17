@@ -27,7 +27,8 @@ import NavMenu from '../nav/nav';
 
 import {
     WidgetDict,
-    Layout
+    Layout,
+    Board
 } from '../interfaces';
 import useCustomToast from '../hooks/useCustomToast';
 
@@ -46,6 +47,14 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         { i: "rg-header", x: 0, y: 0, w: 48, h: 2, static: true }
     ]);
 
+    React.useEffect(() => {
+        const savedBoardKey = localStorage.getItem('currentBoard');
+        if (!savedBoardKey) {
+            return;
+        }
+        loadBoard(savedBoardKey);
+    }, []);
+
     const colors = useAppColors();
     const { colorMode } = useColorMode();
 
@@ -53,6 +62,18 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
 
     const [snackOpen, setSnackOpen] = useState<boolean>(false);
     const [introOpen, setOpenIntro] = useState<boolean>(false);
+    console.log(widgets)
+    const loadBoard = (boardKey: string) => {
+        const allBoards = localStorage.getItem('allBoards');
+        if (!allBoards) {
+            return;
+        }
+        const boardObj: Board = JSON.parse(allBoards)[boardKey];
+        const layout = boardObj.layout;
+        const widgets = boardObj.widgets;
+        setLayout(layout);
+        setWidgets(widgets);
+    }
 
     const removeWidget = (key: string) => {
         const newWidgets = widgets.filter(widget => widget.key !== key);
@@ -141,8 +162,10 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                         menuOpen={menuOpen}
                         addWidget={addWidget}
                         allWidgets={ALL_WIDGETS}
-                        boards={[]}
                         appName={appName}
+                        currentLayout={layout}
+                        currentWidgets={widgets}
+                        loadBoard={loadBoard}
                     />
                     <NavMenu 
                         navOpen={menuOpen} 

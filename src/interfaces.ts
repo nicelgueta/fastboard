@@ -43,9 +43,9 @@ export interface Layout extends BaseLayout {
     i: string;
 }
 
-export interface SavedBoard {
-    key: string;
+export interface Board {
     name: string;
+    key: string;
     widgets: WidgetDict[];
     layout: Layout[];
 }

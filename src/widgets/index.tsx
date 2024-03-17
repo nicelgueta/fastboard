@@ -1,14 +1,10 @@
 import React from 'react';
-import {
-    Text
-} from '@chakra-ui/react';
 import { IntervalTypes, BarStyles } from 'react-tradingview-widget';
 
 // Widgets
 import DataTableWidget from './data-table';
 import TradingViewChart from './tradingview';
-// Components
-import TextSearch from '../components/TextSearch';
+
 
 import { BaseWidgetDict, BaseLayout } from '../interfaces';
 
