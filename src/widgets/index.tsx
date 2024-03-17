@@ -1,6 +1,6 @@
 import React from 'react';
 import { IntervalTypes, BarStyles } from 'react-tradingview-widget';
-import { Box, Center } from '@chakra-ui/layout';
+import { VStack, Center } from '@chakra-ui/layout';
 
 // Widgets
 import DataTableWidget from './data-table';
@@ -10,6 +10,7 @@ import TradingViewChart from './tradingview';
 import { BaseWidgetDict, BaseLayout } from '../interfaces';
 
 import FBInput from '../components/Input';
+import FBSelect from '../components/Select';
 
 
 export const DEFAULT_LAYOUT: BaseLayout = {
@@ -141,11 +142,21 @@ export const ALL_WIDGETS: BaseWidgetDict[] = [
 export const widgetObjReference: { [key: string]: React.FC } = {
     testpad: ()=>(
         <Center h="100%" w="100%">
-            <Box>
+            <VStack>
                 <FBInput 
-                    status='warning'
+                    typ='fail'
                 />
-            </Box>
+                <FBSelect
+                    typ="warning"
+                    size={"md"}
+                    placeholder='Select an option'
+                    options={[
+                        {label: "Option 1", value: "option1"},
+                        {label: "Option 2", value: "option2"},
+                        {label: "Option 3", value: "option3"}
+                    ]}
+                />
+            </VStack>
         </Center>
     ),
     datatable: DataTableWidget,

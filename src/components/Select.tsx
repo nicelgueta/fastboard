@@ -1,13 +1,19 @@
 import React from "react";
-import { Input, InputProps } from "@chakra-ui/react";
+import { Box, Select, SelectProps } from "@chakra-ui/react";
 import useAppColors from "../hooks/colors";
 
-interface FBInputProps extends InputProps {
+interface FBSelectProps extends SelectProps {
     typ?: "info" | "warning" | "success" | "fail";
+    options: Option[];
 }
 
-const FBInput: React.FC<FBInputProps> = ({
-    typ, ...props
+interface Option {
+    label: string;
+    value: string;
+}
+
+const FBSelect: React.FC<FBSelectProps> = ({
+    typ, options, ...props
 }) => {
     const colors = useAppColors();
     const getColors = (typ?: string): Object => {
@@ -70,17 +76,42 @@ const FBInput: React.FC<FBInputProps> = ({
         
         }
     }
+    const selectedOptionStyles = {
+        bg: colors.bg, // Background color
+        color: colors.fore, // Text color
+        _hover: {
+            bg: colors.foreActiveLight, // Hover background color
+            color: colors.bg, // Hover text color
+        },
+    };
     return (
-        <Input 
+        <Select 
             w={"100%"}
             h={"100%"}
-            padding={2}
+            variant={"outline"}
             borderRadius={0}
             borderWidth={1}
-            {...getColors(status)}
+            sx={{
+                "> option": {
+                    bg: colors.bg,
+                    color: colors.foreActiveLight,
+                    borderRadius: 0,
+                },
+            }}
+            {...getColors(typ)}
             {...props}
-        />
+        >
+            {
+                options.map((option, index) => (
+                <option 
+                    key={index} 
+                    value={option.value}
+                >
+                    {option.label}
+                </option>
+            ))}
+        </Select>
     )
 };
 
-export default FBInput;
+export default FBSelect;
