@@ -7,14 +7,17 @@ interface BaseColors {
     success3Quarter: string;
     successHalf: string;
     successQuarter: string;
+    successBarely: string;
     fail: string;
     fail3Quarter: string;
     failHalf: string;
     failQuarter: string;
+    failBarely: string;
     warning: string;
     warning3Quarter: string;
     warningHalf: string;
     warningQuarter: string;
+    warningBarely: string;
 
 }
 interface Colors extends BaseColors {
@@ -49,14 +52,17 @@ const useAppColors = (): Colors => {
         success3Quarter: "rgba(43, 186, 119, 0.75)",
         successHalf: "rgba(43, 186, 119, 0.5)",
         successQuarter: "rgba(43, 186, 119, 0.25)",
+        successBarely: "rgba(43, 186, 119, 0.05)",
         fail: "rgba(227, 14, 42, 1)",
         fail3Quarter: "rgba(227, 14, 42, 0.75)",
         failHalf: "rgba(227, 14, 42, 0.5)",
         failQuarter: "rgba(227, 14, 42, 0.25)",
+        failBarely: "rgba(227, 14, 42, 0.05)",
         warning: "rgba(207, 118, 23, 1)",
         warning3Quarter: "rgba(207, 118, 23, 0.75)",
         warningHalf: "rgba(207, 118, 23, 0.5)",
         warningQuarter: "rgba(207, 118, 23, 0.25)",
+        warningBarely: "rgba(207, 118, 23, 0.05)",
     };
 
     if (colorMode === "light") {
