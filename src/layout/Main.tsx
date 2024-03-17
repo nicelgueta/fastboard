@@ -59,10 +59,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
     const { colorMode } = useColorMode();
 
     const toast  = useCustomToast()
-
-    const [snackOpen, setSnackOpen] = useState<boolean>(false);
-    const [introOpen, setOpenIntro] = useState<boolean>(false);
-    console.log(widgets)
+    
     const loadBoard = (boardKey: string) => {
         const allBoards = localStorage.getItem('allBoards');
         if (!allBoards) {

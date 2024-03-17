@@ -40,7 +40,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
             bgColor={colors.bg}
             textColor={colors.fore}
             borderWidth={1}
-            borderColor={colors.foreActiveQuarter}
+            borderColor={colors.infoQuarter}
             borderRadius={0}
         >
             <Modal isOpen={settingsIsOpen} onClose={() => setSettingsOpen(false)}>
@@ -82,7 +82,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
                             textColor={colors.fore}
                             borderRadius={0}
                             _hover={{ bgGradient: `linear(to-r, ${colors.fore}, ${colors.fore})`, textColor: colors.bg }}
-                            _active={{ bgGradient: `linear(to-r, ${colors.foreActiveLight}, ${colors.foreActive})`, textColor: colors.bg }}
+                            _active={{ bgGradient: `linear(to-r, ${colors.infoLight}, ${colors.info})`, textColor: colors.bg }}
                         >
                             Save
                         </Button>
@@ -125,7 +125,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
                             bg={colors.bg}
                             borderWidth={1}
                             _hover={{ bg: colors.fore, color: colors.bg, borderColor: colors.bg }}
-                            _active={{ bg: colors.foreActive, color: colors.bg, borderColor: colors.bg }}
+                            _active={{ bg: colors.info, color: colors.bg, borderColor: colors.bg }}
                             icon={<MdSettings />}
                             isActive={settingsIsOpen}
                             borderColor={colors.bgDark}
@@ -142,7 +142,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
                             bg={colors.bg}
                             borderWidth={1}
                             _hover={{ bg: colors.fore, color: colors.bg, borderColor: colors.bg }}
-                            _active={{ bg: colors.foreActive, color: colors.bg, borderColor: colors.bg }}
+                            _active={{ bg: colors.info, color: colors.bg, borderColor: colors.bg }}
                             icon={<AiFillPushpin />}
                             isActive={isLargerThan1280 ? isStatic : true}
                             disabled={!isLargerThan1280} //cannot move if on phone

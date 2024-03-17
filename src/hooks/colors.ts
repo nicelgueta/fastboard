@@ -32,13 +32,13 @@ interface Colors extends BaseColors {
     foreLight: string;
     foreDark: string;
     foreBarely: string;
-    foreActive: string;
-    foreActive3Quarter: string;
-    foreActiveHalf: string;
-    foreActiveQuarter: string;
-    foreActiveBarely: string;
-    foreActiveLight: string;
-    foreActiveDark: string;
+    info: string;
+    info3Quarter: string;
+    infoHalf: string;
+    infoQuarter: string;
+    infoBarely: string;
+    infoLight: string;
+    infoDark: string;
     scheme: string;
 }
 
@@ -79,13 +79,13 @@ const useAppColors = (): Colors => {
             foreBarely: "rgba(65, 61, 133, 0.05)",
             foreLight: "rgba(125, 121, 212, 1)",
             foreDark: "rgba(35, 32, 79, 1)",
-            foreActive: "rgba(126, 82, 191, 1)",
-            foreActive3Quarter: "rgba(126, 82, 191, 0.75)",
-            foreActiveHalf: "rgba(126, 82, 191, 0.5)",
-            foreActiveQuarter: "rgba(126, 82, 191, 0.25)",
-            foreActiveBarely: "rgba(126, 82, 191, 0.1)",
-            foreActiveLight: "rgba(40, 130, 209, 1)",
-            foreActiveDark: "rgba(15, 109, 191, 1)",
+            info: "rgba(126, 82, 191, 1)",
+            info3Quarter: "rgba(126, 82, 191, 0.75)",
+            infoHalf: "rgba(126, 82, 191, 0.5)",
+            infoQuarter: "rgba(126, 82, 191, 0.25)",
+            infoBarely: "rgba(126, 82, 191, 0.1)",
+            infoLight: "rgba(40, 130, 209, 1)",
+            infoDark: "rgba(15, 109, 191, 1)",
             scheme: "purple",
         };
         return finalColors;
@@ -103,13 +103,13 @@ const useAppColors = (): Colors => {
             foreBarely: "rgba(255, 255, 252, 0.05)",
             foreLight: "rgba(245, 181, 98, 1)",
             foreDark: "rgba(186, 117, 28, 1)",
-            foreActive: "rgba(128, 90, 213, 1)",
-            foreActive3Quarter: "rgba(128, 90, 213, 0.75)",
-            foreActiveHalf: "rgba(128, 90, 213, 0.5)",
-            foreActiveQuarter: "rgba(128, 90, 213, 0.25)",
-            foreActiveBarely: "rgba(128, 90, 213, 0.10)",
-            foreActiveLight: "rgba(186, 156, 255, 1)",
-            foreActiveDark: "rgba(21, 101, 117, 1)",
+            info: "rgba(128, 90, 213, 1)",
+            info3Quarter: "rgba(128, 90, 213, 0.75)",
+            infoHalf: "rgba(128, 90, 213, 0.5)",
+            infoQuarter: "rgba(128, 90, 213, 0.25)",
+            infoBarely: "rgba(128, 90, 213, 0.10)",
+            infoLight: "rgba(186, 156, 255, 1)",
+            infoDark: "rgba(21, 101, 117, 1)",
             scheme: "green",
         };
         return finalColors;

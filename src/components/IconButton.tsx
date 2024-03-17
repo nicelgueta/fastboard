@@ -1,15 +1,14 @@
 import React from 'react';
 import { IconButton, IconButtonProps } from '@chakra-ui/react';
 import useAppColors from '../hooks/colors';
-
-export type bType = 'success' | 'warning' | 'fail' | 'action';
+import { componentType } from './common';
 
 interface IconBuProps extends IconButtonProps {
-    bType: bType;
+    typ: componentType;
     onClick: () => void;
 }
 
-const IconBu: React.FC<IconBuProps> = ({ bType, onClick, children, ...props }) => {
+const FBIconButton: React.FC<IconBuProps> = ({ typ, onClick, children, ...props }) => {
     const colors = useAppColors();
 
     const buttonConfigs: Record<string, Object> = {
@@ -46,12 +45,12 @@ const IconBu: React.FC<IconBuProps> = ({ bType, onClick, children, ...props }) =
             },
         },
         action: {
-            bg: colors.foreActive3Quarter,
+            bg: colors.info3Quarter,
             textColor: colors.fore,
-            borderColor: colors.foreActive,
+            borderColor: colors.info,
             borderRadius: 0,
             _hover: {
-                bg: colors.foreActive,
+                bg: colors.info,
                 textColor: colors.fore,
                 borderColor: colors.fore,
             },
@@ -60,11 +59,11 @@ const IconBu: React.FC<IconBuProps> = ({ bType, onClick, children, ...props }) =
 
     return (
         <IconButton
-            {...buttonConfigs[bType]}
+            {...buttonConfigs[typ]}
             {...props}
             onClick={onClick}
         />
     );
 };
 
-export default IconBu;
+export default FBIconButton;

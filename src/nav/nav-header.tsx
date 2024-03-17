@@ -6,7 +6,7 @@ import { AiOutlineGithub } from 'react-icons/ai';
 import { useColorMode } from '@chakra-ui/color-mode';
 import useAppColors from '../hooks/colors';
 import TextSearch,  { OptionItem } from '../components/TextSearch';
-import IconBu from '../components/IconButton';
+import FBIconButton from '../components/IconButton';
 import { VscSave, VscSaveAs } from "react-icons/vsc";
 import {
     BaseWidgetDict, Layout, Board, WidgetDict
@@ -118,17 +118,17 @@ const NavHeader: React.FC<NavHeaderProps> = ({
               buttonType="warning"
               showlabel
             />
-            <IconBu
+            <FBIconButton
               aria-label='save-board'
-              bType="action"
+              typ="info"
               size={"sm"}
               h="85%"
               onClick={saveBoard}
               icon={<VscSave />}
             />
-            <IconBu
+            <FBIconButton
               aria-label='save-board-as'
-              bType="action"
+              typ="info"
               size={"sm"}
               h="85%"
               onClick={saveBoardAs}

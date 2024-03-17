@@ -10,7 +10,12 @@ import TradingViewChart from './tradingview';
 import { BaseWidgetDict, BaseLayout } from '../interfaces';
 
 import FBInput from '../components/Input';
+import FBNumberInput from '../components/NumberInput';
 import FBSelect from '../components/Select';
+import FBSwitch from '../components/Switch';
+import FBMultiSelect from '../components/MultiSelect';
+import FBSlider from '../components/Slider';
+import { MdGraphicEq } from 'react-icons/md';
 
 
 export const DEFAULT_LAYOUT: BaseLayout = {
@@ -140,15 +145,25 @@ export const ALL_WIDGETS: BaseWidgetDict[] = [
 ]
 
 export const widgetObjReference: { [key: string]: React.FC } = {
-    testpad: ()=>(
+    testpad: ()=>{
+        const typ = "info";
+        return (
         <Center h="100%" w="100%">
-            <VStack>
+            <VStack
+                w="50%"
+            >
                 <FBInput 
-                    typ='fail'
+                    typ={typ}
+                />
+                <FBNumberInput 
+                    typ={typ}
+                />
+                <FBInput 
+                    typ={typ}
+                    type="date"
                 />
                 <FBSelect
-                    typ="warning"
-                    size={"md"}
+                    typ={typ}
                     placeholder='Select an option'
                     options={[
                         {label: "Option 1", value: "option1"},
@@ -156,9 +171,30 @@ export const widgetObjReference: { [key: string]: React.FC } = {
                         {label: "Option 3", value: "option3"}
                     ]}
                 />
+                <FBSwitch 
+                    left="OFF"
+                    typ={typ}
+                    right="ON"
+                />
+                <FBMultiSelect
+                    typ={typ}
+                    options={[
+                        {"label":"Option 1","value":"option1"},
+                        {"label":"Option 2","value":"option2"}
+                    ]}
+                />
+                <FBSlider 
+                    leftUnitLabel='£'
+                    marks={[25, 50, 75]}
+                    icon={MdGraphicEq}
+                    typ={typ}
+                    min={0}
+                    max={100}
+                    step={5}
+                />
             </VStack>
         </Center>
-    ),
+    )},
     datatable: DataTableWidget,
     tradingViewChart: TradingViewChart
 }

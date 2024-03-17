@@ -30,7 +30,7 @@ const ToastComponent: React.FC<ToastProps> = ({
     const getBgColor = (status: status) => {
         switch (status) {
             case 'info':
-                return colors.foreActiveHalf;
+                return colors.infoHalf;
             case 'warning':
                 return colors.warningHalf;
             case 'success':
@@ -43,7 +43,7 @@ const ToastComponent: React.FC<ToastProps> = ({
     const getBorderColor = (status: status) => {
         switch (status) {
             case 'info':
-                return colors.foreActive;
+                return colors.info;
             case 'warning':
                 return colors.warning;
             case 'success':

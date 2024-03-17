@@ -12,8 +12,8 @@ import {
 } from "@chakra-ui/react";
 import useAppColors from "../hooks/colors";
 import useCustomToast from "../hooks/useCustomToast";
-import Bu, { bType } from "./Button";
-import useInputColors from "../hooks/input-styles";
+import FBButton from "./Button";
+import { componentType } from "./common";
 
 export interface OptionItem {
   label: string;
@@ -34,7 +34,7 @@ interface DropdownProps extends PopoverProps {
   bg?: string;
   textColor?: string;
   placeholder?: string;
-  typ?: string;
+  typ: string;
 }
 
 const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
@@ -112,12 +112,18 @@ const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
             isRequired
             h={h}
             w={w}
-            borderColor={borderColor}
+            borderColor={colors[typ+"Half"]}
             borderRadius={borderRadius}
             bg={bg}
             textColor={textColor}
             placeholder={placeholder}
-            {...useInputColors(typ)}
+            _hover={{
+              borderColor: colors[typ]
+            }}
+            _focusVisible={{
+                borderColor: colors[typ],
+                bg: colors[typ+"Barely"]
+            }}
           />
         </PopoverTrigger>
         <PopoverContent w="500px" zIndex={4}>
@@ -170,9 +176,9 @@ const Option: React.FC<OptionProps> = ({
     if (active === index) {
       return {
         bg: colors.bg,
-        textColor: colors.foreActiveLight,
+        textColor: colors.infoLight,
         _hover: {
-          bg: colors.foreActiveLight,
+          bg: colors.infoLight,
           textColor: colors.bg,
         },
       };
@@ -181,7 +187,7 @@ const Option: React.FC<OptionProps> = ({
         bg: colors.bg,
         textColor: colors.fore,
         _hover: {
-          bg: colors.foreActiveLight,
+          bg: colors.infoLight,
           textColor: colors.bg,
         },
       };
@@ -202,7 +208,7 @@ interface TextSearchProps {
   items: OptionItem[];
   callback: (selectedItem: string | null) => void;
   buttonText: string;
-  buttonType: bType;
+  buttonType: componentType;
   w?: string;
   h?: string;
   clearOnSelect?: boolean;
@@ -259,18 +265,16 @@ const TextSearch: React.FC<TextSearchProps> = ({
         onChange={setTextValue}
         onSelect={setSelectedItem}
         onTextChange={onTextChange}
-        borderColor={colors.foreQuarter}
         borderRadius={0}
-        bg={colors.bg3Quarter}
-        textColor={colors.foreActiveLight}
+        textColor={colors.infoLight}
         placeholder={placeholder}
         h="100%"
         w="100%"
         typ={buttonType}
       />
-      <Bu bType={buttonType} h="95%" onClick={search}>
+      <FBButton typ={buttonType} h="95%" onClick={search}>
         {buttonText}
-      </Bu>
+      </FBButton>
     </HStack>
   );
 };

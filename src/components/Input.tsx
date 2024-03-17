@@ -1,10 +1,10 @@
 import React from "react";
 import { Input, InputProps } from "@chakra-ui/react";
 import useAppColors from "../hooks/colors";
-import useInputColors from "../hooks/input-styles";
+import { componentType } from "./common";
 
 interface FBInputProps extends InputProps {
-    typ?: "info" | "warning" | "success" | "fail";
+    typ: componentType
 }
 
 const FBInput: React.FC<FBInputProps> = ({
@@ -16,10 +16,17 @@ const FBInput: React.FC<FBInputProps> = ({
         <Input 
             w={"100%"}
             h={"100%"}
+            borderColor={colors[typ+"Half"]}
+            _hover={{
+                borderColor: colors[typ]
+            }}
+            _focusVisible={{
+                borderColor: colors[typ],
+                bg: colors[typ+"Barely"]
+            }}
             padding={2}
             borderRadius={0}
             borderWidth={1}
-            {...useInputColors(typ)}
             {...props}
         />
     )
