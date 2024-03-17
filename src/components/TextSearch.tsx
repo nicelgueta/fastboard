@@ -13,6 +13,7 @@ import {
 import useAppColors from "../hooks/colors";
 import useCustomToast from "../hooks/useCustomToast";
 import Bu, { bType } from "./Button";
+import useInputColors from "../hooks/input-styles";
 
 export interface OptionItem {
   label: string;
@@ -33,7 +34,7 @@ interface DropdownProps extends PopoverProps {
   bg?: string;
   textColor?: string;
   placeholder?: string;
-  showlabel?: boolean;
+  typ?: string;
 }
 
 const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
@@ -52,14 +53,14 @@ const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
       bg,
       textColor,
       placeholder,
-      showlabel
+      typ
     },
     ref
   ) => {
     const isSearchActive = useRef(false);
     const [active, setActive] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
-
+    const colors = useAppColors();
     useEffect(() => {
       function fetchValues() {
         if (value) {
@@ -116,6 +117,7 @@ const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
             bg={bg}
             textColor={textColor}
             placeholder={placeholder}
+            {...useInputColors(typ)}
           />
         </PopoverTrigger>
         <PopoverContent w="500px" zIndex={4}>
@@ -215,8 +217,7 @@ const TextSearch: React.FC<TextSearchProps> = ({
   buttonType,
   w,
   h,
-  clearOnSelect,
-  showlabel
+  clearOnSelect
 }) => {
   const [options, setOptions] = useState(items.sort(
     (a, b) => a.label.localeCompare(b.label) 
@@ -265,7 +266,7 @@ const TextSearch: React.FC<TextSearchProps> = ({
         placeholder={placeholder}
         h="100%"
         w="100%"
-        showlabel={showlabel}
+        typ={buttonType}
       />
       <Bu bType={buttonType} h="95%" onClick={search}>
         {buttonText}
