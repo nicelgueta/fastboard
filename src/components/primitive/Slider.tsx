@@ -19,12 +19,18 @@ interface FBSliderProps extends SliderProps {
     leftUnitLabel?: string;
     rightUnitLabel?: string;
     marks?: number[];
+    value?: number;
+    setValue?: (value: number) => void;
 }
 
 const FBSlider: React.FC<FBSliderProps> = ({
-    typ, icon, leftUnitLabel, rightUnitLabel, marks, ...props
+    typ, icon, leftUnitLabel, rightUnitLabel, marks, setValue, value, ...props
 }) => {
     const colors = useAppColors();
+
+    props.max = props.max || 100
+    props.min = props.min || 0
+    props.step = props.step || 5
 
     const [sliderValue, setSliderValue] = React.useState(5)
     const [showTooltip, setShowTooltip] = React.useState(false)
@@ -32,10 +38,10 @@ const FBSlider: React.FC<FBSliderProps> = ({
     return (
         <Slider 
             aria-label='slider-ex-1' 
-            defaultValue={sliderValue} 
-            onChange={(v) => setSliderValue(v)}
+            defaultValue={value || (props.max - props.min) / 2} 
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
+            onChange={setValue ? (v) => setValue(v): props.onChange || setSliderValue}
             {...props}
         >
             {

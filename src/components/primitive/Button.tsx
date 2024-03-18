@@ -4,18 +4,19 @@ import useAppColors from '../../hooks/colors';
 
 import { componentType } from '../common';
 
-interface BuProps extends ButtonProps {
+interface FBButtonProps extends ButtonProps {
     typ: componentType;
     onClick: () => void;
     children: React.ReactNode;
+    isOutline?: boolean;
 }
 
-const Bu: React.FC<BuProps> = ({ typ, onClick, children, ...props }) => {
+const FBButton: React.FC<FBButtonProps> = ({ typ, onClick, isOutline, children, ...props }) => {
     const colors = useAppColors();
 
     return (
         <Button
-            bg={colors[typ+"3Quarter"]}
+            bg={isOutline ? colors.bg : colors[typ+"3Quarter"]}
             textColor={colors.fore}
             borderColor={colors[typ]}
             borderRadius={0}
@@ -31,4 +32,4 @@ const Bu: React.FC<BuProps> = ({ typ, onClick, children, ...props }) => {
     );
 };
 
-export default Bu;
+export default FBButton;

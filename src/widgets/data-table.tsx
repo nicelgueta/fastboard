@@ -2,7 +2,13 @@ import React from "react";
 import { Box } from "@chakra-ui/react";
 import DataTable from "../components/DataTable"; 
 
-const DataTableWidget: React.FC = () => {
+interface DataTableWidgetProps {
+  caption?: string;
+}
+
+const DataTableWidget: React.FC<DataTableWidgetProps> = ({
+  caption
+}) => {
   // Sample data and columns
   const data = [
     { id: 1, name: "John Doe", age: 30, department: "IT" },
@@ -14,7 +20,7 @@ const DataTableWidget: React.FC = () => {
 
   return (
     <Box p={4}>
-      <DataTable data={data} columns={columns} />
+      <DataTable data={data} columns={columns} caption={caption}/>
     </Box>
   );
 };

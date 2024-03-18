@@ -4,11 +4,13 @@ import useAppColors from "../../hooks/colors";
 import { componentType } from "../common";
 
 interface FBInputProps extends InputProps {
-    typ: componentType
+    typ: componentType,
+    setValue?: (value: string) => void;
+
 }
 
 const FBInput: React.FC<FBInputProps> = ({
-    typ, ...props
+    typ, setValue, ...props
 }) => {
     const colors = useAppColors();
     
@@ -27,6 +29,7 @@ const FBInput: React.FC<FBInputProps> = ({
             padding={2}
             borderRadius={0}
             borderWidth={1}
+            onChange={setValue ? (e) => setValue(e.target.value): props.onChange}
             {...props}
         />
     )

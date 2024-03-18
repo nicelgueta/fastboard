@@ -4,22 +4,19 @@ import {
 } from '@chakra-ui/react';
 
 import { componentType } from '../common';
+import { SelectOption } from '../../interfaces';
 import useAppColors from '../../hooks/colors';
 
-interface Option {
-    value: string;
-    label: string;
-}
 
 interface FBMultiSelectProps {
     typ: componentType;
-    onChange?: (value: string[] | string) => void;
+    setValue?: (value: string[] | string) => void;
     value?: string[];
-    options: Option[];
+    options: SelectOption[];
 }
 
 const FBMultiSelect: React.FC<FBMultiSelectProps> = ({ 
-    typ, value, onChange, options, ...props 
+    typ, value, setValue, options, ...props 
 }) => {
     const [selected, setSelected] = useState<string[] | string>(value || []);
     const colors = useAppColors();
@@ -51,15 +48,15 @@ const FBMultiSelect: React.FC<FBMultiSelectProps> = ({
             <MenuList>
                 <MenuOptionGroup 
                     type="checkbox"
-                    onChange={setSelected} defaultValue={selected}
+                    onChange={setValue || setSelected} defaultValue={selected}
                     zIndex={1000}
                 >
-                    {options.map((option: Option) => (
+                    {options.map((option: SelectOption) => (
                         <MenuItemOption 
-                            isChecked={selected.includes(option.value)}
+                            isChecked={selected.includes(option.value.toString())}
                             key={option.value} 
-                            value={option.value}
-                            bg={selected.includes(option.value) ? colors[typ+"3Quarter"] : ''}
+                            value={option.value.toString()}
+                            bg={selected.includes(option.value.toString()) ? colors[typ+"3Quarter"] : ''}
                         >
                             {option.label}
                         </MenuItemOption>

@@ -2,19 +2,16 @@ import React from "react";
 import { Center, Select, SelectProps } from "@chakra-ui/react";
 import useAppColors from "../../hooks/colors";
 import { componentType } from "../common";
+import { SelectOption } from "../../interfaces"
 
 export interface FBSelectProps extends SelectProps {
     typ: componentType;
-    options: Option[];
-}
-
-interface Option {
-    label: string;
-    value: string;
+    options: SelectOption[];
+    setValue?: (value: string) => void;
 }
 
 const FBSelect: React.FC<FBSelectProps> = ({
-    typ, options, ...props
+    typ, options, setValue, ...props
 }) => {
     const colors = useAppColors();
     return (
@@ -36,6 +33,7 @@ const FBSelect: React.FC<FBSelectProps> = ({
                     borderColor: colors[typ],
                     bg: colors[typ+"Quarter"]
                 }}
+                onChange={setValue ? (e) => setValue(e.target.value): props.onChange}
                 {...props}
             >
                 {

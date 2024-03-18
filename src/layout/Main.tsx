@@ -79,6 +79,16 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         const newLayout = layout.filter(item => item.i !== key);
         setLayout(newLayout);
     };
+    console.log(widgets)
+    const saveWidgetSettings = (key: string, settings: Record<string, any>) => {
+        const newWidgets = widgets.map(widget => {
+            if (widget.key === key) {
+                return { ...widget, currentSettings: settings };
+            }
+            return widget;
+        });
+        setWidgets(newWidgets);
+    }
 
     const addWidget = (type: string) => {
         const widgetDict = ALL_WIDGETS.find(widget => widget.type === type);
@@ -91,7 +101,6 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             return;
         }
         const maxNo = widgetDict?.maxNo || 0;
-        // if maxNo reached then disallow
         const existingWidgetCount = widgets.filter(widget => widget.type === type).length;
         if (existingWidgetCount >= maxNo) {
             toast(
@@ -185,11 +194,13 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                         <WidgetContainer
                             name={widgetDict.name}
                             wKey={widgetDict.key}
-                            settings={widgetDict.settings}
+                            settingsConfig={widgetDict.settings}
                             isStatic={getLayout(widgetDict.key)?.static || false}
                             WidgetElement={widgetObjReference[widgetDict.type]}
                             removeWidget={removeWidget}
                             toggleStatic={toggleStatic}
+                            saveWidgetSettings={saveWidgetSettings}
+                            currentSettings={widgetDict.currentSettings}
                         />
                     </div>
                 ))}

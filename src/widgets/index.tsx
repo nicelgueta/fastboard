@@ -76,7 +76,7 @@ export const ALL_WIDGETS: BaseWidgetDict[] = [
                 label: "Caption",
                 settingsKey: "caption",
                 tooltip: "The captions for the dataset being displayed",
-                type: "free-text",
+                type: "input",
             }
         ]
     },
@@ -105,7 +105,7 @@ export const ALL_WIDGETS: BaseWidgetDict[] = [
                     the config below and use the symbol search to find more markets. NB, 
                     charts configured from within the TradingView search cannot be saved and will 
                     revert to your previous configuration unless you configure the market here.`,
-                type: "free_text",
+                type: "input",
                 default: "COINBASE:BTCUSD"
             },
             {
@@ -130,14 +130,18 @@ export const ALL_WIDGETS: BaseWidgetDict[] = [
                 label: "Chart interval",
                 settingsKey: "chartInterval",
                 type: "select",
-                options: [...Object.keys(IntervalTypes), 1, 3, 5, 15, 30, 60, 120, 180],
+                options: [...Object.keys(IntervalTypes), 1, 3, 5, 15, 30, 60, 120, 180].map(x=>{return{
+                    label: x.toString(), value: x
+                }}),
                 default: IntervalTypes.D
             },
             {
                 label: "Bar type",
                 settingsKey: "barType",
                 type: "select",
-                options: Object.keys(BarStyles),
+                options: Object.keys(BarStyles).map(x=>{return{
+                    label: x, value: x
+                }}),
                 default: "CANDLES"
             },
         ]

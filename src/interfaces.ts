@@ -1,3 +1,4 @@
+import { componentType } from "./components/common";
 
 
 export interface WidgetSetting {
@@ -5,8 +6,9 @@ export interface WidgetSetting {
     settingsKey: string;
     tooltip?: string;
     type: string;
-    options?: (number | string)[];
+    options?: SelectOption[];
     default?: number | string | boolean;
+    inputTyp?: componentType;
 }
 
 export interface BaseWidgetDict {
@@ -22,6 +24,7 @@ export interface BaseWidgetDict {
 export interface WidgetDict extends BaseWidgetDict {
     key: string
     typeNumber: number;
+    currentSettings?: Record<string, string | number | boolean | undefined>;
 }
 
 export interface BaseLayout {
@@ -48,4 +51,9 @@ export interface Board {
     key: string;
     widgets: WidgetDict[];
     layout: Layout[];
+}
+
+export interface SelectOption {
+    label: string;
+    value: string | number;
 }

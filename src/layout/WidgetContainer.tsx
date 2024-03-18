@@ -7,32 +7,56 @@ import useAppColors from '../hooks/colors';
 import { stopPropagation } from '../hooks/stoppropagation';
 
 import { WidgetSetting } from '../interfaces';
-import Settings from '../components/Settings';
+import SettingsModal from '../modals/SettingsModal';
 
 interface WidgetContainerProps {
     name: string;
     wKey: string;
     isStatic: boolean;
-    settings: WidgetSetting[];
+    settingsConfig: WidgetSetting[];
     WidgetElement: React.ElementType;
     removeWidget: (key: string) => void;
     toggleStatic: (key: string) => void;
+    saveWidgetSettings: (key: string, settings: Record<string, any>) => void;
+    currentSettings?: Record<string, any>;
+}
+
+interface SetSettings {
+    [key: string]: string | number | boolean | undefined
+}
+
+const getDefaultSettings = (settings: WidgetSetting[]): SetSettings => {
+    const defaultSettings: SetSettings = {};
+    settings.forEach((setting) => {
+        defaultSettings[setting.settingsKey] = setting.default;
+    });
+    return defaultSettings;
 }
 
 const WidgetContainer: React.FC<WidgetContainerProps> = ({
     name,
     wKey,
     isStatic,
-    settings,
+    settingsConfig,
     WidgetElement,
     removeWidget,
     toggleStatic,
+    saveWidgetSettings,
+    currentSettings
 }: WidgetContainerProps) => {
     const colors = useAppColors();
-    const [widgetSettings, setWidgetSettings] = useState<WidgetSetting[]>(settings);
+    const [widgetSettings, setWidgetSettings] = useState<SetSettings>(
+        currentSettings || getDefaultSettings(settingsConfig)
+    );
     const [settingsIsOpen, setSettingsOpen] = useState(false);
     const [isLargerThan1280] = useMediaQuery('(min-width: 1280px)');
 
+    const saveSettings = (sts: SetSettings) => {
+        saveWidgetSettings(wKey, sts);
+        setWidgetSettings(sts);
+    }
+    console.log(currentSettings)
+    console.log(widgetSettings)
     return (
         <Box
             w={"100%"}
@@ -43,52 +67,14 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
             borderColor={colors.infoQuarter}
             borderRadius={0}
         >
-            <Modal isOpen={settingsIsOpen} onClose={() => setSettingsOpen(false)}>
-                <ModalOverlay />
-                <ModalContent
-                    bgColor={colors.bg}
-                    textColor={colors.fore}
-                    fontFamily="courier new"
-                    borderRadius={0}
-                    borderColor={colors.fore}
-                    borderWidth={1}
-                    onMouseDown={stopPropagation}
-                    onTouchStart={stopPropagation}
-                >
-                    <ModalHeader
-                        borderBottomColor={colors.fore}
-                        borderBottomWidth={1}
-                        fontSize={18}
-                    >
-                        {`${name} Settings`}
-                    </ModalHeader>
-                    <ModalCloseButton
-                        borderWidth={1}
-                        borderRadius={0}
-                        borderColor={colors.fore}
-                        _hover={{ bgColor: colors.fore, color: colors.bg }}
-                    />
-                    <ModalBody paddingTop={5}>
-                        <Settings 
-                            widgetSettings={widgetSettings}
-                            setWidgetSettings={setWidgetSettings}
-                        />
-                    </ModalBody>
-
-                    <ModalFooter>
-                        <Button
-                            variant='outline'
-                            borderColor={colors.fore}
-                            textColor={colors.fore}
-                            borderRadius={0}
-                            _hover={{ bgGradient: `linear(to-r, ${colors.fore}, ${colors.fore})`, textColor: colors.bg }}
-                            _active={{ bgGradient: `linear(to-r, ${colors.infoLight}, ${colors.info})`, textColor: colors.bg }}
-                        >
-                            Save
-                        </Button>
-                    </ModalFooter>
-                </ModalContent>
-            </Modal>
+            <SettingsModal 
+                name={name}
+                settingsIsOpen={settingsIsOpen}
+                setSettingsOpen={setSettingsOpen}
+                settingsConfig={settingsConfig}
+                currentSettings={widgetSettings}
+                settingsCallback={saveSettings}
+            />
             <VStack h="100%" w="100%">
                 <HStack
                     w="100%"

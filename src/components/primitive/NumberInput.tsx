@@ -12,11 +12,12 @@ import useAppColors from "../../hooks/colors";
 import { componentType } from "../common";
 
 interface FBNumberInputProps extends NumberInputProps {
-    typ: componentType
+    typ: componentType,
+    setValue?: (value: number) => void;
 }
 
 const FBNumberInput: React.FC<FBNumberInputProps> = ({
-    typ, ...props
+    typ, setValue, ...props
 }) => {
     const colors = useAppColors();
     
@@ -24,6 +25,7 @@ const FBNumberInput: React.FC<FBNumberInputProps> = ({
         <NumberInput 
             w={"100%"}
             h={"100%"}
+            onChange={setValue ? (_: string, valueAsNumber: number) => setValue(valueAsNumber): props.onChange}
             {...props}
         >
             <NumberInputField 
