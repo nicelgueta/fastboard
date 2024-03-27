@@ -6,15 +6,15 @@ import {
     VStack,
     useToast
 } from '@chakra-ui/react';
-import useAppColors from './colors';
+import useAppColors from './useAppColors';
 import React from 'react';
 import { VscClose } from 'react-icons/vsc';
 
-type status = 'info' | 'warning' | 'success' | 'fail';
+import { componentType } from '../interfaces';
 
 interface ToastProps {
     title: string;
-    status: status;
+    status: componentType;
     description?: string;
     onClose: () => void;
 }
@@ -25,32 +25,14 @@ const ToastComponent: React.FC<ToastProps> = ({
     status,
     onClose 
 }) => {
-    const colors = useAppColors();
+    const [colors] = useAppColors();
 
-    const getBgColor = (status: status) => {
-        switch (status) {
-            case 'info':
-                return colors.infoHalf;
-            case 'warning':
-                return colors.warningHalf;
-            case 'success':
-                return colors.successHalf;
-            case 'fail':
-                return colors.failHalf;
-        }
+    const getBgColor = (status: componentType) => {
+        return colors[status]
     }
 
-    const getBorderColor = (status: status) => {
-        switch (status) {
-            case 'info':
-                return colors.info;
-            case 'warning':
-                return colors.warning;
-            case 'success':
-                return colors.success;
-            case 'fail':
-                return colors.fail;
-        }
+    const getBorderColor = (status: componentType) => {
+        return colors[status]
     }
 
     return (
@@ -102,12 +84,12 @@ const ToastComponent: React.FC<ToastProps> = ({
         </Center>
     )
 }
-const useCustomToast = () => {
+const useUserAlert = () => {
     const toast = useToast();
 
     const customToast = (
         title: string, 
-        status: status,
+        status: componentType,
         description?: string
     ) => {
         toast({
@@ -121,4 +103,4 @@ const useCustomToast = () => {
     return customToast;
 }
 
-export default useCustomToast;
+export default useUserAlert;

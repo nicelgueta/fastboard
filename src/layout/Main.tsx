@@ -2,74 +2,72 @@ import React, { useState } from 'react';
 import {
     useColorMode,
     useMediaQuery,
-    IconButton,
-    ButtonGroup,
-    HStack,
-    VStack,
     Box,
-    Text,
 } from '@chakra-ui/react';
-import { stopPropagation } from '../hooks/stoppropagation';
-import { Icon, Tooltip } from '@chakra-ui/react';
-import { AiFillEye, AiFillPushpin } from 'react-icons/ai';
 import GridLayout from 'react-grid-layout';
-import useAppColors from '../hooks/colors';
+import useAppColors from '../hooks/useAppColors';
 import WidgetContainer from './WidgetContainer';
-
-import { 
-    ALL_WIDGETS, 
-    widgetObjReference,
-} from '../widgets';
 
 // nav
 import NavHeader from '../nav/nav-header';
 import NavMenu from '../nav/nav';
 
 import {
+    BaseWidgetDict,
     WidgetDict,
     Layout,
-    Board
+    Board,
+    WidgetState
 } from '../interfaces';
-import useCustomToast from '../hooks/useCustomToast';
+import useUserAlert from '../hooks/useUserAlert';
+import useKvStore from '../hooks/useKvStore';
+import { AllWidgetStates } from '../reducers/recoilStates';
+import { useRecoilState } from 'recoil';
 
 interface DashboardContainerProps {
     appName: string;
+    widgetConfig: BaseWidgetDict[];
+    widgetComponentMapping: Record<string, React.FC<any>>;
 }
 
 const DashboardContainer: React.FC<DashboardContainerProps> = ({
-    appName,
+    appName, widgetConfig, widgetComponentMapping
 }: DashboardContainerProps) => {
-    const [isLargerThan1280] = useMediaQuery('(min-width: 1280px)');
-    const [menuOpen, setMenuOpen] = useState<boolean>(false);
-    const toggleMenuOpen = () => setMenuOpen(!menuOpen);
-    const [widgets, setWidgets] = useState<WidgetDict[]>([]);
-    const [layout, setLayout] = useState<Layout[]>([
+    const [ isLargerThan1280 ] = useMediaQuery('(min-width: 1280px)');
+    const [ menuOpen, setMenuOpen ] = useState<boolean>(false);
+    const [ widgets, setWidgets ] = useState<WidgetDict[]>([]);
+    const [ layout, setLayout ] = useState<Layout[]>([
         { i: "rg-header", x: 0, y: 0, w: 48, h: 2, static: true }
     ]);
-
-    React.useEffect(() => {
-        const savedBoardKey = localStorage.getItem('currentBoard');
-        if (!savedBoardKey) {
-            return;
-        }
-        loadBoard(savedBoardKey);
-    }, []);
-
-    const colors = useAppColors();
+    const [ allWidgetStates, setWidgetStates ] = useRecoilState(AllWidgetStates);
+    const [ currentBoardKey, setCurrentBoardKey] = useState<string>("");
+    const { get: getSavedBoard } = useKvStore('allBoards');
+    const [ colors ] = useAppColors();
     const { colorMode } = useColorMode();
 
-    const toast  = useCustomToast()
+    
+    const toggleMenuOpen = () => setMenuOpen(!menuOpen);
+    const userAlert  = useUserAlert()
     
     const loadBoard = (boardKey: string) => {
-        const allBoards = localStorage.getItem('allBoards');
-        if (!allBoards) {
+        const boardObj: Board = getSavedBoard(boardKey);
+        if (!boardObj) {
             return;
         }
-        const boardObj: Board = JSON.parse(allBoards)[boardKey];
         const layout = boardObj.layout;
         const widgets = boardObj.widgets;
+        const widgetStates = boardObj.widgetStates;
         setLayout(layout);
         setWidgets(widgets);
+        setCurrentBoardKey(boardKey);
+        setWidgetStates(widgetStates);
+    }
+
+    const resetBoard = () => {
+        setLayout([
+            { i: "rg-header", x: 0, y: 0, w: 96, h: 2, static: true}
+        ]);
+        setWidgets([]);
     }
 
     const removeWidget = (key: string) => {
@@ -78,8 +76,12 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
 
         const newLayout = layout.filter(item => item.i !== key);
         setLayout(newLayout);
+
+        const newWidgetStates = { ...allWidgetStates };
+        delete newWidgetStates[key];
+        setWidgetStates(newWidgetStates);
     };
-    console.log(widgets)
+
     const saveWidgetSettings = (key: string, settings: Record<string, any>) => {
         const newWidgets = widgets.map(widget => {
             if (widget.key === key) {
@@ -90,10 +92,10 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         setWidgets(newWidgets);
     }
 
-    const addWidget = (type: string) => {
-        const widgetDict = ALL_WIDGETS.find(widget => widget.type === type);
+    const addWidget = (type: string, savedSettings?: Record<string, any>) => {
+        const widgetDict = widgetConfig.find(widget => widget.type === type);
         if (!widgetDict) {
-            toast(
+            userAlert(
                 "Widget not found",
                 "fail",
                 `The widget ${type} was not found - are you sure this has been implemented?`
@@ -103,7 +105,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         const maxNo = widgetDict?.maxNo || 0;
         const existingWidgetCount = widgets.filter(widget => widget.type === type).length;
         if (existingWidgetCount >= maxNo) {
-            toast(
+            userAlert(
                 "Too many widgets",
                 "fail",
                 `You cannot have more than ${existingWidgetCount} ${widgetDict.name} widget(s)`
@@ -117,9 +119,15 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             const newWidgeDict: WidgetDict = { ...widgetDict, typeNumber: widgeTypeNumber, key: key };
 
             const newLayout: Layout = { ...newWidgeDict.defaultLayout, i: key };
-
+            if (savedSettings) {
+                newWidgeDict.currentSettings = savedSettings;
+            }
             setLayout([...layout, newLayout]);
             setWidgets([...widgets, newWidgeDict]);
+            setWidgetStates({
+                ...allWidgetStates,
+                [key]: {} as WidgetState
+            });
         }
     };
 
@@ -135,7 +143,6 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         return layout.find(item => item.i === key);
     };
 
-    // console.log(layout)
     return (
         <Box w={"100%"} h={"100%"} className={`fastboard-${colorMode}`}>
             <title>{appName}</title>
@@ -143,7 +150,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                 className="layout"
                 layout={layout}
                 height={Math.min(1080, window.screen.availHeight)}
-                cols={isLargerThan1280 ? 48 : 1}
+                cols={isLargerThan1280 ? 96 : 1}
                 rowHeight={20}
                 width={Math.min(1920, window.screen.availWidth)}
                 margin={[0, 0]}
@@ -167,11 +174,13 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                         toggleNav={toggleMenuOpen}
                         menuOpen={menuOpen}
                         addWidget={addWidget}
-                        allWidgets={ALL_WIDGETS}
+                        allWidgets={widgetConfig}
                         appName={appName}
                         currentLayout={layout}
+                        resetLayout={resetBoard}
                         currentWidgets={widgets}
                         loadBoard={loadBoard}
+                        currentBoardKey={currentBoardKey}
                     />
                     <NavMenu 
                         navOpen={menuOpen} 
@@ -194,9 +203,10 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                         <WidgetContainer
                             name={widgetDict.name}
                             wKey={widgetDict.key}
+                            widgetType={widgetDict.type}
                             settingsConfig={widgetDict.settings}
                             isStatic={getLayout(widgetDict.key)?.static || false}
-                            WidgetElement={widgetObjReference[widgetDict.type]}
+                            WidgetElement={widgetComponentMapping[widgetDict.type]}
                             removeWidget={removeWidget}
                             toggleStatic={toggleStatic}
                             saveWidgetSettings={saveWidgetSettings}

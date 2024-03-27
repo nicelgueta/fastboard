@@ -1,14 +1,34 @@
-import { componentType } from "./components/common";
+export type componentType = 'success' | 'warning' | 'fail' | 'info';
+export type settingType = 'input' | 'number' | 'select' | 'switch' | 'multiSelect' | 'slider' | 'textarea' | 'date';
 
+export type Dataset = Record<string, any>[];
+
+export interface Datasets {
+    [wKey: string]: Dataset;
+}
+export interface WidgetState {
+    name: string;
+    [key: string]: any;
+}
+
+export interface WidgetStates {
+    [wKey: string]: WidgetState;
+
+}
 
 export interface WidgetSetting {
     label: string;
     settingsKey: string;
     tooltip?: string;
-    type: string;
+    type: settingType;
     options?: SelectOption[];
+    required?: boolean;
+    optionsFetch?: () => SelectOption[];
     default?: number | string | boolean;
     inputTyp?: componentType;
+    min?: number;
+    max?: number;
+    step?: number;
 }
 
 export interface BaseWidgetDict {
@@ -20,6 +40,8 @@ export interface BaseWidgetDict {
     settings: WidgetSetting[];
     defaultLayout: BaseLayout
 }
+export type WidgetConfig = BaseWidgetDict[];
+export type WidgetComponentMapping = Record<string, React.FC<WidgetElementProps>>;
 
 export interface WidgetDict extends BaseWidgetDict {
     key: string
@@ -51,9 +73,17 @@ export interface Board {
     key: string;
     widgets: WidgetDict[];
     layout: Layout[];
+    widgetStates: WidgetStates;
 }
 
 export interface SelectOption {
     label: string;
     value: string | number;
+}
+
+export interface WidgetElementProps {
+    wKey: string;
+    settingsIsOpen: boolean;
+    containerRef: React.RefObject<HTMLDivElement>;
+    isStatic: boolean;
 }

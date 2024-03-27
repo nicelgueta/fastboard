@@ -1,45 +1,51 @@
 import React from "react";
-import { HStack, Switch, SwitchProps, Text } from "@chakra-ui/react";
-import useAppColors from "../../hooks/colors";
+import { HStack, Switch, Text, Box, Center } from "@chakra-ui/react";
+import useAppColors from "../../hooks/useAppColors";
 
 interface FBSwitchProps {
-    typ: string;
+    typ?: string;
     left?: string;
     right?: string;
     setValue?: (value: boolean) => void;
     value?: boolean;
+    isCenter?: boolean;
 }
 
 const FBSwitch: React.FC<FBSwitchProps> = ({
-    typ, left, right, setValue, value, ...props
+    typ, left, right, setValue, value, isCenter, ...props
 }) => {
-    const colors = useAppColors();
+    const [colors] = useAppColors();
+    typ = typ || "info";
+    const Container = isCenter ? Center : Box 
     return (
-        <HStack>
-            <Text>
-                {left}
-            </Text>
-            <Switch 
-                borderRadius={15}
-                sx={{
-                    ".chakra-switch__track": {
-                        bg: colors[typ+"Quarter"],
+        <Container>
+            <HStack>
+                <Text>
+                    {left}
+                </Text>
+                <Switch 
+                    borderRadius={15}
+                    sx={{
+                        ".chakra-switch__track": {
+                            bg: colors.foreQuarter,
+                        }
+                    }}
+                    _checked={
+                        {
+                            bg: colors[typ],
+                            borderColor: colors[typ],
+                        }
                     }
-                }}
-                _checked={
-                    {
-                        bg: colors[typ],
-                        borderColor: colors[typ],
-                    }
-                }
-                isChecked={value}
-                onChange={setValue ? (e)=>setValue(e.target.checked):undefined}
-            />
+                    isChecked={value}
+                    {...props}
+                    onChange={setValue ? (e)=>setValue(e.target.checked):undefined}
+                />
 
-            <Text>
-                {right}
-            </Text>
-        </HStack>
+                <Text>
+                    {right}
+                </Text>
+            </HStack>
+        </Container>
     )
 }
 

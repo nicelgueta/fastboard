@@ -1,15 +1,11 @@
 .fastboard-dark {
-    ::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
     ::-webkit-scrollbar-thumb {
-      background: linear-gradient(13deg, rgba(126, 82, 191, 0.25) 35%, rgba(126, 82, 191, 0.4) 65%);
+      background: #4A5568;
       border-radius: 5px;
       background-clip: padding-box;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(126, 82, 191, 1);
+      background: #CBD5E0;
     }
     ::-webkit-scrollbar-track {
       background: #171923;
@@ -37,10 +33,6 @@
       box-shadow: inset 7px 10px 12px #1A202C;
     }
   .fastboard-light {
-    ::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
     ::-webkit-scrollbar-thumb {
       background:  linear-gradient(13deg, rgba(125, 121, 212,1) 35%, rgba(35, 32, 79,1) 65%);
       border-radius: 5px;
@@ -58,18 +50,19 @@
     }
   }
   ::-webkit-scrollbar {
-    width: 10px;
+    width: 7px;
+    height: 7px;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(128, 90, 213, 0.25);
+    background: #4A5568;
     border-radius: 5px;
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(128, 90, 213, 0.8)
+    background: #CBD5E0;
   }
   ::-webkit-scrollbar-track {
-    background: rgba(128, 90, 213, 0.10);
+    background: #171923;
     background-clip: padding-box;
     border-radius: 5px;
     box-shadow: inset 7px 10px 12px #1A202C;

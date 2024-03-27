@@ -1,27 +1,32 @@
 import React from 'react';
 import { Grid, GridItem, Heading, HStack, Center, IconButton } from '@chakra-ui/react';
-import { ColorModeSwitcher } from '../components/ColorModeSwitcher';
-import { MdAccountCircle, MdMenu } from 'react-icons/md';
+// import { ColorModeSwitcher } from '../components/ColorModeSwitcher';
+import { MdMenu } from 'react-icons/md';
 import { AiOutlineGithub } from 'react-icons/ai';
-import { useColorMode } from '@chakra-ui/color-mode';
-import useAppColors from '../hooks/colors';
+import useAppColors from '../hooks/useAppColors';
 import TextSearch,  { OptionItem } from '../components/TextSearch';
 import FBIconButton from '../components/primitive/IconButton';
-import { VscSave, VscSaveAs } from "react-icons/vsc";
+import { VscSave, VscSaveAs, VscRefresh } from "react-icons/vsc";
+import { AllWidgetStates } from '../reducers/recoilStates';
+import { useRecoilState } from 'recoil';
 import {
-    BaseWidgetDict, Layout, Board, WidgetDict
+    BaseWidgetDict, Layout, WidgetDict
 } from '../interfaces';
-import useCustomToast from '../hooks/useCustomToast';
+import useUserAlert from '../hooks/useUserAlert';
+import useKvStore from '../hooks/useKvStore';
+import SaveAsModal from '../modals/SaveAsModal';
 
 interface NavHeaderProps {
   toggleNav: (menuOpen: boolean) => void;
   menuOpen: boolean;
-  addWidget: (wKey: string) => void; 
+  addWidget: (type: string, savedWidget?: WidgetDict) => void; 
   allWidgets: BaseWidgetDict[]; 
   currentLayout: Layout[];
+  resetLayout: () => void;
   currentWidgets: WidgetDict[];
   appName: string;
   loadBoard: (boardKey: string) => void;
+  currentBoardKey: string;
 }
 
 const NavHeader: React.FC<NavHeaderProps> = ({
@@ -31,47 +36,61 @@ const NavHeader: React.FC<NavHeaderProps> = ({
   allWidgets,
   appName,
   currentLayout,
+  resetLayout,
   currentWidgets,
-  loadBoard
+  loadBoard,
+  currentBoardKey
 }) => {
-  const { colorMode } = useColorMode();
-  const colors = useAppColors();
+  
+  const [colors] = useAppColors();
   const txtColor = colors.fore;
+  const [saveAsOpen, setSaveAsOpen] = React.useState(false);
+  const {set: setSavedBoard, list: listAllBoardKeys} = useKvStore('allBoards');
+  const {list: listSavedSettings, get:getSavedSettings} = useKvStore('saved_widgets');
+  const [allBoardKeys, setAllBoardKeys] = React.useState<string[]>([]);
 
-  const [allBoards, setAllBoards] = React.useState<{[key: string]: Board}>({});
+  const [widgetStates] = useRecoilState(AllWidgetStates);
 
   React.useEffect(() => {
-    const allBoardsJSON = localStorage.getItem('allBoards');
-    if (allBoardsJSON) {
-      setAllBoards(JSON.parse(allBoardsJSON));
+    const abk = listAllBoardKeys();
+    if (abk) {
+      setAllBoardKeys(abk);
     }
-  },[]);
+  },[saveAsOpen]);
 
-  const userAlert = useCustomToast();
+  const userAlert = useUserAlert();
 
   const allWidgetItems: OptionItem[] = allWidgets.map((widget, i) => ({
     label: widget.name,
     value: widget.type
   }));
 
-  const layoutItems: OptionItem[] = Object.keys(allBoards).map(k=>allBoards[k]).map((board, i) => ({
-    label: board.name,
-    value: board.key
+  const layoutItems: OptionItem[] = allBoardKeys.map(k=> ({
+    label: k,
+    value: k
   }));
-
-  const saveBoard = () => {
+  // console.log(layoutItems)
+  const loadWidget = (widgetKey: string) => {
+    const {type: widgetType, settings:widgetSettings} = getSavedSettings(widgetKey);
+    if (!widgetSettings) {
+      userAlert(
+        `Widget settings not found`,
+        'fail'
+      );
+      return;
+    }
+    addWidget(widgetType, widgetSettings);
+  }
+  const saveBoard = (key: string) => {
     const savedBoard = {
-      name: 'My Board',
-      key: 'currentBoard',
+      name: key,
+      key: key,
       layout: currentLayout,
-      widgets: currentWidgets
+      widgets: currentWidgets,
+      widgetStates: widgetStates
     };
-
-    const newAllBoards = {...allBoards};
-    newAllBoards[savedBoard.key] = savedBoard;
-    localStorage.setItem('allBoards', JSON.stringify(newAllBoards));
-    localStorage.setItem("currentBoard", savedBoard.key);
-    setAllBoards(newAllBoards);
+    console.log(savedBoard)
+    setSavedBoard(savedBoard.key, savedBoard);
 
     userAlert(
       `"${savedBoard.name}" has been saved`,
@@ -80,20 +99,28 @@ const NavHeader: React.FC<NavHeaderProps> = ({
   }
 
   const saveBoardAs = () => {
-    userAlert(
-      `Save As is not implemented yet`,
-      'warning'
-    )
+    setSaveAsOpen(true);
   }
 
 
   return (
-    <Grid textAlign="left" templateColumns='repeat(20, 1fr)' bg={colors.bgHalf}>
+    <>
+    <SaveAsModal
+      storeName={"allBoards"}
+      objToSave={{layout: currentLayout, widgets: currentWidgets}}
+      isOpen={saveAsOpen}
+      setIsOpen={setSaveAsOpen}
+      helperText='Provide a name for your board layout.'
+      callback={(k)=>userAlert(`"${k}" has been saved`,'success')}
+
+    />
+    <Grid h="100%" textAlign="left" templateColumns='repeat(20, 1fr)' bg={colors.bgHalf}>
       <GridItem colSpan={1} padding={1}>
         <HStack h="100%">
           <Center>
             <Heading
                 alignSelf="center"
+                paddingLeft={1}
                 h="100%"
                 alignContent="center"
                 fontSize={18}
@@ -105,35 +132,46 @@ const NavHeader: React.FC<NavHeaderProps> = ({
           </Center>
         </HStack>
       </GridItem>
-      <GridItem colSpan={3} padding={1}>
+      <GridItem colSpan={4} padding={1}>
         <Center w="100%" h="100%">
           <HStack w="100%" h="100%" spacing={1}>
             <TextSearch
               w="100%"
-              h="85%"
-              placeholder="Layout"
+              h="100%"
+              placeholder="Dashboard"
               items={layoutItems}
               callback={loadBoard}
               buttonText="LOAD"
-              buttonType="warning"
+              buttonType="info"
               showlabel
+              openHotkey='Digit1'
             />
             <FBIconButton
               aria-label='save-board'
               typ="info"
               size={"sm"}
-              h="85%"
-              onClick={saveBoard}
-              icon={<VscSave />}
+              h="100%"
+              onClick={()=>saveBoard(currentBoardKey)}
+              icon={<VscSave fontSize={16} />}
+              isDisabled={currentBoardKey === ''}
             />
             <FBIconButton
               aria-label='save-board-as'
-              typ="info"
+              typ="success"
               size={"sm"}
-              h="85%"
+              h="100%"
               onClick={saveBoardAs}
-              icon={<VscSaveAs />}
+              icon={<VscSaveAs fontSize={16} />}
             />
+            <FBIconButton
+              aria-label='reset-layout'
+              typ="warning"
+              size={"sm"}
+              h="100%"
+              onClick={resetLayout}
+              icon={<VscRefresh fontSize={16} />}
+            />
+            
           </HStack>
         </Center>
       </GridItem>
@@ -141,8 +179,8 @@ const NavHeader: React.FC<NavHeaderProps> = ({
         <Center w="100%" h="100%">
           <TextSearch
             w="100%"
-            h="85%"
-            placeholder="Tool"
+            h="100%"
+            placeholder="New tool"
             items={allWidgetItems}
             callback={addWidget}
             buttonText="ADD"
@@ -151,7 +189,21 @@ const NavHeader: React.FC<NavHeaderProps> = ({
           />
         </Center>
       </GridItem>
-      <GridItem justifySelf="flex-end" colSpan={13}>
+      <GridItem colSpan={3} padding={1}>
+        <Center w="100%" h="100%">
+          <TextSearch
+            w="100%"
+            h="100%"
+            placeholder="Saved tool"
+            items={listSavedSettings().map(x=>({label: x, value: x}))}
+            callback={loadWidget}
+            buttonText="LOAD"
+            buttonType="info"
+            clearOnSelect
+          />
+        </Center>
+      </GridItem>
+      <GridItem justifySelf="flex-end" colSpan={9}>
         <HStack>
           <IconButton
             aria-label='drawer-toggle'
@@ -171,14 +223,15 @@ const NavHeader: React.FC<NavHeaderProps> = ({
           >
             <AiOutlineGithub size={30} />
           </IconButton>
-          <ColorModeSwitcher 
+          {/* <ColorModeSwitcher 
             aria-label='color-mode-switcher'
             color={txtColor} 
             justifySelf="flex-end" 
-          />
+          /> */}
         </HStack>
       </GridItem>
     </Grid>
+    </>
   );
 };
 

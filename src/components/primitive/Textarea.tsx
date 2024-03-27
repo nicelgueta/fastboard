@@ -1,22 +1,21 @@
 import React from "react";
-import { Input, InputProps } from "@chakra-ui/react";
+import { Textarea , TextareaProps } from "@chakra-ui/react";
 import useAppColors from "../../hooks/useAppColors";
 import { componentType } from "../../interfaces";
 
-interface FBInputProps extends InputProps {
+interface FBTextareaProps extends TextareaProps {
     typ?: componentType,
     setValue?: (value: string) => void;
-    fillColor?: boolean;
 
 }
 
-const FBInput: React.FC<FBInputProps> = ({
-    typ, setValue, fillColor, ...props
+const FBTextarea: React.FC<FBTextareaProps> = ({
+    typ, setValue, ...props
 }) => {
     const [colors] = useAppColors();
     typ = typ || "info";
     return (
-        <Input 
+        <Textarea 
             w={"100%"}
             h={"100%"}
             borderColor={colors[typ+"Half"]}
@@ -25,9 +24,8 @@ const FBInput: React.FC<FBInputProps> = ({
             }}
             _focusVisible={{
                 borderColor: colors[typ],
-                bg: colors[typ+"Dark"]
+                bg: colors[typ+"Barely"]
             }}
-            bg={fillColor ? colors[typ+"Dark"] : undefined}
             padding={2}
             borderRadius={0}
             borderWidth={1}
@@ -37,4 +35,4 @@ const FBInput: React.FC<FBInputProps> = ({
     )
 };
 
-export default FBInput;
+export default FBTextarea;

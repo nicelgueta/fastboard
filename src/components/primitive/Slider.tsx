@@ -10,11 +10,11 @@ import {
     Tooltip
 
 } from "@chakra-ui/react";
-import useAppColors from "../../hooks/colors";
-import { componentType } from "../common";
+import useAppColors from "../../hooks/useAppColors";
+import { componentType } from "../../interfaces";
 
 interface FBSliderProps extends SliderProps {
-    typ: componentType
+    typ?: componentType
     icon?: React.FC<any>;
     leftUnitLabel?: string;
     rightUnitLabel?: string;
@@ -26,13 +26,13 @@ interface FBSliderProps extends SliderProps {
 const FBSlider: React.FC<FBSliderProps> = ({
     typ, icon, leftUnitLabel, rightUnitLabel, marks, setValue, value, ...props
 }) => {
-    const colors = useAppColors();
-
+    const [colors] = useAppColors();
+    typ = typ || "info";
     props.max = props.max || 100
     props.min = props.min || 0
     props.step = props.step || 5
 
-    const [sliderValue, setSliderValue] = React.useState(5)
+    const [sliderValue, setSliderValue] = React.useState(value)
     const [showTooltip, setShowTooltip] = React.useState(false)
     
     return (
@@ -69,7 +69,7 @@ const FBSlider: React.FC<FBSliderProps> = ({
                 color='white'
                 placement='top'
                 isOpen={showTooltip}
-                label={`${leftUnitLabel||""}${sliderValue}${rightUnitLabel||""}`}
+                label={`${leftUnitLabel||""}${setValue?value:sliderValue}${rightUnitLabel||""}`}
             >
                 {
                     icon ?

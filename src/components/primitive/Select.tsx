@@ -1,19 +1,20 @@
 import React from "react";
 import { Center, Select, SelectProps } from "@chakra-ui/react";
-import useAppColors from "../../hooks/colors";
-import { componentType } from "../common";
-import { SelectOption } from "../../interfaces"
+import useAppColors from "../../hooks/useAppColors";
+import { SelectOption, componentType } from "../../interfaces";
 
 export interface FBSelectProps extends SelectProps {
-    typ: componentType;
+    typ?: componentType;
     options: SelectOption[];
     setValue?: (value: string) => void;
+    fillColor?: boolean;
 }
 
 const FBSelect: React.FC<FBSelectProps> = ({
-    typ, options, setValue, ...props
+    typ, options, setValue, fillColor,...props
 }) => {
-    const colors = useAppColors();
+    const [colors] = useAppColors();
+    typ = typ || "info";
     return (
         <Center
             w="100%"
@@ -26,6 +27,7 @@ const FBSelect: React.FC<FBSelectProps> = ({
                 borderWidth={1}
                 textColor={colors.fore}
                 borderColor={colors[typ+"Half"]}
+                bg={fillColor ? colors[typ+"Dark"] : undefined}
                 _hover={{
                     borderColor: colors[typ],
                 }}

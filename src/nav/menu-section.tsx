@@ -13,7 +13,7 @@ import {
 
 import { AiOutlineArrowRight } from "react-icons/ai";
 import { useColorMode } from '@chakra-ui/color-mode';
-import useAppColors from "../hooks/colors";
+import useAppColors from "../hooks/useAppColors";
 
 const urlReg = /^https{0,1}\:\/\/.*/;
 const isUrl = (str: string): boolean => urlReg.test(str);
@@ -33,7 +33,7 @@ interface NavMenuSectionProps {
 
 const NavMenuSection: React.FC<NavMenuSectionProps> = (props) => {
     const { colorMode } = useColorMode();
-    const colors = useAppColors();
+    const [colors] = useAppColors();
     const txtColor = colors.fore;
 
     return (

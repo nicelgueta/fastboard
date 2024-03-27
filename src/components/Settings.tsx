@@ -8,30 +8,33 @@ import FBSelect from './primitive/Select';
 import FBSwitch from './primitive/Switch';
 import FBMultiSelect from './primitive/MultiSelect';
 import FBSlider from './primitive/Slider';
-import { componentType } from './common';
+import FBTextarea from './primitive/Textarea';
+import { componentType, settingType } from '../interfaces';
+import useAppColors from '../hooks/useAppColors';
 
-type settingType = 'input' | 'number' | 'select' | 'switch' | 'multiSelect' | 'slider';
-
-const SETTINGS_MAP: Record<settingType, React.FC<any>> = {
+export const SettingsMap: Record<settingType, React.FC<any>> = {
     input: FBInput,
     number: FBNumberInput,
     select: FBSelect,
     switch: FBSwitch,
     multiSelect: FBMultiSelect,
-    slider: FBSlider
+    slider: FBSlider,
+    textarea: FBTextarea,
+    date: (props) => <FBInput {...props} type="date" />
 }
 
 interface SettingComponentProps {
     setting: WidgetSetting;
     stateCallback: (key: string, value: any) => void;
-    value: string | number | boolean | undefined;
+    value: string | number | boolean | Date | undefined;
     inputTyp?: componentType;
 }
 
 const SettingComponent: React.FC<SettingComponentProps> = (
     {setting, stateCallback, value, inputTyp}
     ) => {
-        const InputComponent = SETTINGS_MAP[setting.type];
+        const [colors] = useAppColors();
+        const InputComponent = SettingsMap[setting.type];
         return (
             <>
         <GridItem textAlign={"right"} paddingRight={5}>
@@ -39,6 +42,7 @@ const SettingComponent: React.FC<SettingComponentProps> = (
                 <Text w="100%">
                     {setting.label}
                 </Text>
+                {setting.required ? <Text color={colors.fail} paddingLeft={2}>*</Text> : null}
             </Center>
         </GridItem>
         <GridItem>
@@ -47,7 +51,10 @@ const SettingComponent: React.FC<SettingComponentProps> = (
                 value={value} 
                 setValue={(v)=>stateCallback(setting.settingsKey, v)}
                 options={setting.options}
-                />
+                min={setting.min}
+                max={setting.max}
+                step={setting.step}
+            />
         </GridItem>
         </>
     )
@@ -55,7 +62,7 @@ const SettingComponent: React.FC<SettingComponentProps> = (
 
 interface SettingsProps {
     settingsConfig: WidgetSetting[];
-    currentSettings: Record<string, string | number | boolean | undefined>;
+    currentSettings: Record<string, string | number | boolean | Date | undefined>;
     updateSetting: (key: string, value: any) => void;
     inputTyp?: componentType
 }

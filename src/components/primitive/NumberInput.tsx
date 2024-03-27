@@ -8,19 +8,19 @@ import {
     NumberDecrementStepper
 
 } from "@chakra-ui/react";
-import useAppColors from "../../hooks/colors";
-import { componentType } from "../common";
+import useAppColors from "../../hooks/useAppColors";
+import { componentType } from "../../interfaces";
 
 interface FBNumberInputProps extends NumberInputProps {
-    typ: componentType,
+    typ?: componentType,
     setValue?: (value: number) => void;
 }
 
 const FBNumberInput: React.FC<FBNumberInputProps> = ({
     typ, setValue, ...props
 }) => {
-    const colors = useAppColors();
-    
+    const [colors] = useAppColors();
+    typ = typ || "info";
     return (
         <NumberInput 
             w={"100%"}

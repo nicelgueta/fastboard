@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useRef, useState, useCallback } from "react";
 import _ from "lodash";
 import {
   Input,
@@ -10,10 +10,25 @@ import {
   HStack,
   PopoverProps,
 } from "@chakra-ui/react";
-import useAppColors from "../hooks/colors";
-import useCustomToast from "../hooks/useCustomToast";
+import useAppColors from "../hooks/useAppColors";
+import useUserAlert from "../hooks/useUserAlert";
 import FBButton from "./primitive/Button";
-import { componentType } from "./common";
+import { componentType } from "../interfaces";
+import { MdAirlineSeatIndividualSuite } from "react-icons/md";
+
+interface TextSearchProps {
+  placeholder: string;
+  items: OptionItem[];
+  callback: (selectedItem: string | null) => void;
+  buttonText: string;
+  buttonType: componentType;
+  w?: string;
+  h?: string;
+  clearOnSelect?: boolean;
+  showlabel?: boolean;
+  openHotkey?: string;
+}
+
 
 export interface OptionItem {
   label: string;
@@ -32,9 +47,9 @@ interface DropdownProps extends PopoverProps {
   borderColor?: string;
   borderRadius?: number;
   bg?: string;
-  textColor?: string;
   placeholder?: string;
-  typ: string;
+  typ: componentType;
+  openHotkey?: string;
 }
 
 const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
@@ -48,19 +63,19 @@ const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
       onSelect,
       h,
       w,
-      borderColor,
       borderRadius,
       bg,
-      textColor,
       placeholder,
-      typ
+      typ,
+      openHotkey
     },
     ref
   ) => {
+    name = name || `textSearch-${openHotkey||""}`;
     const isSearchActive = useRef(false);
     const [active, setActive] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
-    const colors = useAppColors();
+    const [colors] = useAppColors();
     useEffect(() => {
       function fetchValues() {
         if (value) {
@@ -78,25 +93,23 @@ const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
       setIsOpen(options.length > 0 && isSearchActive.current);
     };
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-      const isUpKeyCode = event.keyCode === 38;
-      const isDownKeyCode = event.keyCode === 40;
-      const isEnterKeyCode = event.keyCode === 13;
-      const isExitKeyCode = event.keyCode === 27;
-      if (isUpKeyCode && active > 0) {
-        setActive(active - 1);
-      }
-      if (isDownKeyCode && active < options.length - 1) {
-        setActive(active + 1);
-      }
-      if (isEnterKeyCode) {
-        onChange(options[active].label);
+    // Set some global event listeners
+    const keyEventFunction = useCallback((event) => {
+      if (event.key === "Escape") {
         setIsOpen(false);
-      }
-      if (isExitKeyCode) {
-        setIsOpen(false);
-      }
-    };
+      } 
+      // else if (event.code === openHotkey && event.shiftKey) {
+        
+      // }
+    }, []);
+
+    useEffect(() => {
+      document.addEventListener("keydown", keyEventFunction, false);
+
+      return () => {
+        document.removeEventListener("keydown", keyEventFunction, false);
+      };
+    }, [keyEventFunction]);
 
     return (
       <Popover isOpen={isOpen} autoFocus={false} matchWidth>
@@ -108,21 +121,20 @@ const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
             value={value}
             autoComplete="off"
             onChange={(e) => handleTextChange(e.target.value)}
-            onKeyDown={handleKeyDown}
             isRequired
             h={h}
             w={w}
             borderColor={colors[typ+"Half"]}
             borderRadius={borderRadius}
             bg={bg}
-            textColor={textColor}
+            textColor={colors[typ]}
             placeholder={placeholder}
             _hover={{
               borderColor: colors[typ]
             }}
             _focusVisible={{
                 borderColor: colors[typ],
-                bg: colors[typ+"Barely"]
+                bg: colors[typ+"Dark"]
             }}
           />
         </PopoverTrigger>
@@ -137,6 +149,7 @@ const Dropdown = forwardRef<HTMLInputElement, DropdownProps>(
               setIsOpen={setIsOpen}
               index={i}
               active={active}
+              typ={typ}
             />
           ))}
         </PopoverContent>
@@ -153,6 +166,7 @@ interface OptionProps {
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   index: number;
   active: number;
+  typ: componentType;
 }
 
 const Option: React.FC<OptionProps> = ({
@@ -163,8 +177,9 @@ const Option: React.FC<OptionProps> = ({
   setIsOpen,
   index,
   active,
+  typ
 }) => {
-  const colors = useAppColors();
+  const [colors] = useAppColors();
 
   const updateText = () => {
     onChange(value);
@@ -176,18 +191,18 @@ const Option: React.FC<OptionProps> = ({
     if (active === index) {
       return {
         bg: colors.bg,
-        textColor: colors.infoLight,
+        textColor: colors[typ],
         _hover: {
-          bg: colors.infoLight,
+          bg: colors[typ+"Light"],
           textColor: colors.bg,
         },
       };
     } else {
       return {
         bg: colors.bg,
-        textColor: colors.fore,
+        textColor: colors[typ],
         _hover: {
-          bg: colors.infoLight,
+          bg: colors[typ+"Light"],
           textColor: colors.bg,
         },
       };
@@ -203,17 +218,6 @@ const Option: React.FC<OptionProps> = ({
 
 Dropdown.displayName = "Dropdown";
 
-interface TextSearchProps {
-  placeholder: string;
-  items: OptionItem[];
-  callback: (selectedItem: string | null) => void;
-  buttonText: string;
-  buttonType: componentType;
-  w?: string;
-  h?: string;
-  clearOnSelect?: boolean;
-  showlabel?: boolean;
-}
 
 const TextSearch: React.FC<TextSearchProps> = ({
   placeholder,
@@ -223,7 +227,8 @@ const TextSearch: React.FC<TextSearchProps> = ({
   buttonType,
   w,
   h,
-  clearOnSelect
+  clearOnSelect,
+  openHotkey
 }) => {
   const [options, setOptions] = useState(items.sort(
     (a, b) => a.label.localeCompare(b.label) 
@@ -231,9 +236,9 @@ const TextSearch: React.FC<TextSearchProps> = ({
   const [textValue, setTextValue] = useState("");
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
-  const toast = useCustomToast();
+  const userAlert = useUserAlert();
 
-  const colors = useAppColors();
+  const [colors] = useAppColors();
 
   const onTextChange = (text: string) => {
     const newOptions = _.filter(
@@ -245,7 +250,7 @@ const TextSearch: React.FC<TextSearchProps> = ({
 
   const search = () => {
     if (!selectedItem) {
-      toast(
+      userAlert(
           "No item selected",
           "fail",
       );
@@ -266,13 +271,13 @@ const TextSearch: React.FC<TextSearchProps> = ({
         onSelect={setSelectedItem}
         onTextChange={onTextChange}
         borderRadius={0}
-        textColor={colors.infoLight}
         placeholder={placeholder}
         h="100%"
         w="100%"
         typ={buttonType}
+        openHotkey={openHotkey}
       />
-      <FBButton typ={buttonType} h="95%" onClick={search}>
+      <FBButton typ={buttonType} h="100%" onClick={search}>
         {buttonText}
       </FBButton>
     </HStack>

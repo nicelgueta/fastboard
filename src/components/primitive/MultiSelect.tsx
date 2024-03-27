@@ -1,26 +1,32 @@
-import React, { useState, ChangeEvent } from 'react';
+import React, { useState } from 'react';
 import { 
-    Menu, MenuButton, MenuOptionGroup, MenuItemOption, MenuList, Button
+    Menu, MenuButton, MenuButtonProps, MenuOptionGroup, MenuItemOption, MenuList, Button
 } from '@chakra-ui/react';
 
-import { componentType } from '../common';
 import { SelectOption } from '../../interfaces';
-import useAppColors from '../../hooks/colors';
+import useAppColors from '../../hooks/useAppColors';
+import FBButton, { FBButtonProps } from './Button';
 
 
-interface FBMultiSelectProps {
-    typ: componentType;
-    setValue?: (value: string[] | string) => void;
+interface FBMultiSelectProps extends FBButtonProps {
+    setValue?: (value: string[]) => void;
     value?: string[];
     options: SelectOption[];
+    boxLabel?: string;
 }
 
-const FBMultiSelect: React.FC<FBMultiSelectProps> = ({ 
-    typ, value, setValue, options, ...props 
-}) => {
-    const [selected, setSelected] = useState<string[] | string>(value || []);
-    const colors = useAppColors();
 
+const FBMultiSelect: React.FC<FBMultiSelectProps> = ({ 
+    typ, value, setValue, options, boxLabel, ...props
+}) => {
+    const [selected, setSelected] = useState<string[]|string>(value || []);
+    React.useEffect(() => {
+        if (options.length === 0 ) {
+            setSelected([]);
+        }
+    }, [options]);
+    const [colors] = useAppColors();
+    typ = typ || "info";
     return (
         <Menu isLazy closeOnSelect={false}>
             <MenuButton 
@@ -29,29 +35,30 @@ const FBMultiSelect: React.FC<FBMultiSelectProps> = ({
                 borderWidth={1}
                 textColor={colors.fore}
                 borderColor={colors[typ+"Half"]}
-                bg={colors.bg}
+                bg={props.variant === "outline" ? colors.bg : colors[typ+"3Quarter"]}
                 _hover={{
                     borderColor: colors[typ],
+                    bg: colors[typ+"Quarter"]
                 }}
                 _active={{
                     borderColor: colors[typ],
                     bg: colors[typ+"Quarter"]
                 }}
-                w="100%"
                 {...props}
             >
                 {
-                    selected.length > 1 ? "Multiple" : 
-                    selected.length > 0 ? options.filter(x=>x.value===selected[0])[0].label : 'Select...'
+                    selected.length > 1 ? boxLabel? boxLabel + ": Multiple" : "Multiple" : 
+                    selected.length > 0 ? options.filter(x=>x.value===selected[0])[0].label : boxLabel || 'Select...'
                 }
             </MenuButton>
             <MenuList>
                 <MenuOptionGroup 
                     type="checkbox"
-                    onChange={setValue || setSelected} defaultValue={selected}
+                    onChange={(v) => typeof(v)==="object" ?  (setValue?.(v) || setSelected(v)) : undefined} 
+                    defaultValue={selected}
                     zIndex={1000}
                 >
-                    {options.map((option: SelectOption) => (
+                    {options.length>1?options.map((option: SelectOption) => (
                         <MenuItemOption 
                             isChecked={selected.includes(option.value.toString())}
                             key={option.value} 
@@ -60,7 +67,7 @@ const FBMultiSelect: React.FC<FBMultiSelectProps> = ({
                         >
                             {option.label}
                         </MenuItemOption>
-                    ))}
+                    )):null}
                 </MenuOptionGroup>
             </MenuList>
         </Menu>
