@@ -1,11 +1,12 @@
 {
   "name": "fastboard",
   "version": "1.0.0",
-  "description": "build window-orientated dashaboards fast",
+  "description": "build window-orientated dashboards fast",
   "main": "index.tsx",
   "author": "nicelgueta",
   "license": "MIT",
   "dependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.0",
