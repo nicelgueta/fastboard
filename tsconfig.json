@@ -1,17 +1,18 @@
 {
     "compilerOptions": {
-        "outDir": "./dist/",       
-        "sourceMap": true,         
-        "strictNullChecks": true,  
-        "module": "es6",           
-        "jsx": "react",            
-        "target": "es5",           
-        "allowJs": true,
+        "target": "ES2020",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "jsx": "react-jsx",
+        "isolatedModules": true,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "types": ["vite/client"],
+        "strictNullChecks": true,
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
-        "moduleResolution": "node",
-        "forceConsistentCasingInFileNames": true     
-
+        "forceConsistentCasingInFileNames": true
     },
     "include": [
         "./src/"

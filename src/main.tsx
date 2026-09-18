@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import FastBoard from './FastBoard';
 import 'dockview-react/dist/styles/dockview.css';
 import './index.scss'
@@ -20,14 +20,13 @@ const widgetConfig = [
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  ReactDOM.render(
+  createRoot(rootElement).render(
     <React.StrictMode>
-      <FastBoard 
+      <FastBoard
         appName="TestApp"
         widgetConfig={widgetConfig as WidgetConfig}
         widgetComponentMapping={widgetComponentMapping as WidgetComponentMapping}
       />
-    </React.StrictMode>,
-    rootElement
+    </React.StrictMode>
   );
 }

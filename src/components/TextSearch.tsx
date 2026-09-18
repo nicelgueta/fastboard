@@ -14,7 +14,6 @@ import useAppColors from "../hooks/useAppColors";
 import useUserAlert from "../hooks/useUserAlert";
 import FBButton from "./primitive/Button";
 import { componentType } from "../interfaces";
-import { MdAirlineSeatIndividualSuite } from "react-icons/md";
 
 interface TextSearchProps {
   placeholder: string;
