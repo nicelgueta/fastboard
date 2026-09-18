@@ -1,8 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import FastBoard from './FastBoard';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
+import 'dockview-react/dist/styles/dockview.css';
 import './index.scss'
 import './index.css';
 

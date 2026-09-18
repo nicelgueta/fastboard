@@ -1,3 +1,5 @@
+import type { SerializedDockview } from 'dockview-react';
+
 export type componentType = 'success' | 'warning' | 'fail' | 'info';
 export type settingType = 'input' | 'number' | 'select' | 'switch' | 'multiSelect' | 'slider' | 'textarea' | 'date';
 
@@ -50,29 +52,17 @@ export interface WidgetDict extends BaseWidgetDict {
 }
 
 export interface BaseLayout {
-    x: number;
-    y: number;
-
-    minW?: number;
-    w: number;
-    maxW?: number;
-
-    minH?: number;
-    h: number;
-    maxH?: number;
-
-    static: boolean;
-}
-
-export interface Layout extends BaseLayout {
-    i: string;
+    // initial size (in pixels) for a widget's dockview panel when it is
+    // first added - dockview owns positioning/resizing/docking thereafter.
+    initialWidth?: number;
+    initialHeight?: number;
 }
 
 export interface Board {
     name: string;
     key: string;
     widgets: WidgetDict[];
-    layout: Layout[];
+    layout: SerializedDockview;
     widgetStates: WidgetStates;
 }
 

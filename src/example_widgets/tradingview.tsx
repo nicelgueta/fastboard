@@ -54,13 +54,8 @@ export const TradingViewChartConfig = {
     maxNo: 10,
     defaultLayout: {
         ...DefaultLayout,
-        minW: 6,
-        w: 20,
-        maxW: 40,
-        minH: 8,
-        h: 20,
-        maxH: 96,
-        static: false
+        initialWidth: 480,
+        initialHeight: 420,
     },
     settings:[
         {

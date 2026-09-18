@@ -9,8 +9,9 @@ import FBIconButton from '../components/primitive/IconButton';
 import { VscSave, VscSaveAs, VscRefresh } from "react-icons/vsc";
 import { AllWidgetStates } from '../reducers/recoilStates';
 import { useRecoilState } from 'recoil';
+import type { SerializedDockview } from 'dockview-react';
 import {
-    BaseWidgetDict, Layout, WidgetDict
+    BaseWidgetDict, WidgetDict
 } from '../interfaces';
 import useUserAlert from '../hooks/useUserAlert';
 import useKvStore from '../hooks/useKvStore';
@@ -19,9 +20,9 @@ import SaveAsModal from '../modals/SaveAsModal';
 interface NavHeaderProps {
   toggleNav: (menuOpen: boolean) => void;
   menuOpen: boolean;
-  addWidget: (type: string, savedWidget?: WidgetDict) => void; 
-  allWidgets: BaseWidgetDict[]; 
-  currentLayout: Layout[];
+  addWidget: (type: string, savedWidget?: WidgetDict) => void;
+  allWidgets: BaseWidgetDict[];
+  getCurrentLayout: () => SerializedDockview | undefined;
   resetLayout: () => void;
   currentWidgets: WidgetDict[];
   appName: string;
@@ -35,7 +36,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({
   addWidget,
   allWidgets,
   appName,
-  currentLayout,
+  getCurrentLayout,
   resetLayout,
   currentWidgets,
   loadBoard,
@@ -82,14 +83,17 @@ const NavHeader: React.FC<NavHeaderProps> = ({
     addWidget(widgetType, widgetSettings);
   }
   const saveBoard = (key: string) => {
+    const layout = getCurrentLayout();
+    if (!layout) {
+      return;
+    }
     const savedBoard = {
       name: key,
       key: key,
-      layout: currentLayout,
+      layout,
       widgets: currentWidgets,
       widgetStates: widgetStates
     };
-    console.log(savedBoard)
     setSavedBoard(savedBoard.key, savedBoard);
 
     userAlert(
@@ -107,7 +111,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({
     <>
     <SaveAsModal
       storeName={"allBoards"}
-      objToSave={{layout: currentLayout, widgets: currentWidgets}}
+      objToSave={{layout: getCurrentLayout(), widgets: currentWidgets, widgetStates}}
       isOpen={saveAsOpen}
       setIsOpen={setSaveAsOpen}
       helperText='Provide a name for your board layout.'
