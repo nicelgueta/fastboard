@@ -1,6 +1,6 @@
 import React from "react";
 import { Input, InputProps } from "@chakra-ui/react";
-import useAppColors from "../../hooks/useAppColors";
+import useAppColors, { RADIUS } from "../../hooks/useAppColors";
 import { componentType } from "../../interfaces";
 
 interface FBInputProps extends InputProps {
@@ -25,11 +25,11 @@ const FBInput: React.FC<FBInputProps> = ({
             }}
             _focusVisible={{
                 borderColor: colors[typ],
-                bg: colors[typ+"Dark"]
+                bg: colors[typ+"Barely"]
             }}
             bg={fillColor ? colors[typ+"Dark"] : undefined}
             padding={2}
-            borderRadius={0}
+            borderRadius={RADIUS.md}
             borderWidth={1}
             onChange={setValue ? (e) => setValue(e.target.value): props.onChange}
             {...props}

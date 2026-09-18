@@ -6,7 +6,7 @@ import {
     VStack,
     useToast
 } from '@chakra-ui/react';
-import useAppColors from './useAppColors';
+import useAppColors, { RADIUS } from './useAppColors';
 import React from 'react';
 import { VscClose } from 'react-icons/vsc';
 
@@ -28,7 +28,9 @@ const ToastComponent: React.FC<ToastProps> = ({
     const [colors] = useAppColors();
 
     const getBgColor = (status: componentType) => {
-        return colors[status]
+        // Near-opaque so the toast reads clearly over whatever's behind it,
+        // rather than the faint wash that made status hard to tell at a glance.
+        return colors[`${status}Dark`]
     }
 
     const getBorderColor = (status: componentType) => {
@@ -40,10 +42,11 @@ const ToastComponent: React.FC<ToastProps> = ({
             w={"100%"}
             padding={2}
             bgColor={getBgColor(status)}
-            textColor={colors.fore}
+            textColor={colors.foreLight}
             borderColor={getBorderColor(status)}
             borderWidth={1}
-            borderRadius={0}
+            borderRadius={RADIUS.lg}
+            boxShadow="lg"
         >
             <VStack 
                 h={"100%"}
@@ -61,13 +64,9 @@ const ToastComponent: React.FC<ToastProps> = ({
                         {title}
                     </Text>
                     <IconButton
-                        borderColor={colors.fore}
-                        borderRadius={0}
-                        borderWidth={1}
-                        _hover={{
-                            bgColor: colors.fore,
-                            color: colors.bg
-                        }}
+                        borderRadius={RADIUS.md}
+                        variant="ghost"
+                        _hover={{ bgColor: colors.foreQuarter }}
                         size={"xs"}
                         aria-label="Close"
                         icon={<VscClose />}
@@ -94,7 +93,7 @@ const useUserAlert = () => {
     ) => {
         toast({
             render: ({id, onClose}) => ToastComponent({ title, status, description, onClose }),
-            position: "top",
+            position: "bottom",
             duration: 5000,
             isClosable: true,
         });

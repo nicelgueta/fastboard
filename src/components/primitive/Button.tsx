@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, ButtonProps } from '@chakra-ui/react';
-import useAppColors from '../../hooks/useAppColors';
+import useAppColors, { RADIUS } from '../../hooks/useAppColors';
 
 import { componentType } from '../../interfaces';
 
@@ -19,7 +19,7 @@ const FBButton: React.FC<FBButtonProps> = ({ typ, onClick, isOutline, children, 
             bg={props.variant === "outline" ? colors.bgHalf : colors[typ+"Half"]}
             textColor={colors.fore}
             borderColor={colors[typ+"Half"]}
-            borderRadius={0}
+            borderRadius={RADIUS.md}
             borderWidth={1}
             _hover={{
                 bg: props.variant === "outline" ? colors[typ+"Quarter"] : colors[typ+"3Quarter"],

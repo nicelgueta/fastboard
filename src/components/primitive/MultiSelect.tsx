@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react';
 
 import { SelectOption } from '../../interfaces';
-import useAppColors from '../../hooks/useAppColors';
+import useAppColors, { RADIUS } from '../../hooks/useAppColors';
 import FBButton, { FBButtonProps } from './Button';
 
 
@@ -29,13 +29,13 @@ const FBMultiSelect: React.FC<FBMultiSelectProps> = ({
     typ = typ || "info";
     return (
         <Menu isLazy closeOnSelect={false}>
-            <MenuButton 
+            <MenuButton
                 as={Button}
-                borderRadius={0}
+                borderRadius={RADIUS.md}
                 borderWidth={1}
                 textColor={colors.fore}
                 borderColor={colors[typ+"Half"]}
-                bg={props.variant === "outline" ? colors.bg : colors[typ+"3Quarter"]}
+                bg={props.variant === "outline" ? colors.bgHalf : colors[typ+"Half"]}
                 _hover={{
                     borderColor: colors[typ],
                     bg: colors[typ+"Quarter"]
@@ -47,23 +47,32 @@ const FBMultiSelect: React.FC<FBMultiSelectProps> = ({
                 {...props}
             >
                 {
-                    selected.length > 1 ? boxLabel? boxLabel + ": Multiple" : "Multiple" : 
+                    selected.length > 1 ? boxLabel? boxLabel + ": Multiple" : "Multiple" :
                     selected.length > 0 ? options.filter(x=>x.value===selected[0])[0].label : boxLabel || 'Select...'
                 }
             </MenuButton>
-            <MenuList>
-                <MenuOptionGroup 
+            <MenuList
+                bg={colors.surfaceAlt}
+                borderColor={colors.border}
+                borderWidth={1}
+                borderRadius={RADIUS.lg}
+                boxShadow="lg"
+                padding={1}
+            >
+                <MenuOptionGroup
                     type="checkbox"
-                    onChange={(v) => typeof(v)==="object" ?  (setValue?.(v) || setSelected(v)) : undefined} 
+                    onChange={(v) => typeof(v)==="object" ?  (setValue?.(v) || setSelected(v)) : undefined}
                     defaultValue={selected}
                     zIndex={1000}
                 >
                     {options.length>1?options.map((option: SelectOption) => (
-                        <MenuItemOption 
+                        <MenuItemOption
                             isChecked={selected.includes(option.value.toString())}
-                            key={option.value} 
+                            key={option.value}
                             value={option.value.toString()}
-                            bg={selected.includes(option.value.toString()) ? colors[typ+"3Quarter"] : ''}
+                            bg={selected.includes(option.value.toString()) ? colors[typ+"Quarter"] : undefined}
+                            borderRadius={RADIUS.sm}
+                            _hover={{ bg: colors.surfaceSubtle }}
                         >
                             {option.label}
                         </MenuItemOption>

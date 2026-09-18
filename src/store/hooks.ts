@@ -2,6 +2,7 @@ import { useCallback, useEffect, DependencyList } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useWidgetStore, WidgetRecord, WidgetExports } from './widgetStore';
 import { WidgetState } from '../interfaces';
+import type { EditorWidgetExports } from '../widgets/types';
 
 // The public widget-linking API. Consumers should reach for these instead of
 // touching useWidgetStore directly - they encapsulate the selector shapes
@@ -23,6 +24,24 @@ export const useWidgetsByType = (type: string): WidgetRecord[] =>
 /** Every registered widget. Same referential-stability guarantee as useWidgetsByType. */
 export const useAllWidgets = (): WidgetRecord[] =>
     useWidgetStore(useShallow((s) => Object.values(s.widgets)));
+
+/**
+ * Which editor widget (if any) currently targets each table widget, keyed by
+ * the table's wKey. A table <-> editor link is 1:1: exactly one editor may
+ * target a given table at a time - see EditorWidget's handleTargetChange,
+ * which is what actually enforces that exclusivity. Both TableWidget and
+ * EditorWidget read this to show their connected/disconnected status.
+ */
+export const useEditorLinks = (): Record<string, WidgetRecord> =>
+    useWidgetStore(useShallow((s) => {
+        const links: Record<string, WidgetRecord> = {};
+        for (const w of Object.values(s.widgets)) {
+            if (w.type !== 'editor') continue;
+            const exp = s.exports[w.wKey] as unknown as EditorWidgetExports | undefined;
+            if (exp?.targetWKey) links[exp.targetWKey] = w;
+        }
+        return links;
+    }));
 
 /** A widget's own private, persisted state, plus a patch setter. */
 export const useWidgetState = <T extends Record<string, any> = WidgetState>(

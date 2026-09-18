@@ -15,7 +15,7 @@ import {
     IconButton,
 } from '@chakra-ui/react';
 import { MdClose, MdAdd } from 'react-icons/md';
-import useAppColors from '../../hooks/useAppColors';
+import useAppColors, { RADIUS } from '../../hooks/useAppColors';
 import { stopPropagation } from '../../components/common';
 import FBButton from '../../components/primitive/Button';
 import FBInput from '../../components/primitive/Input';
@@ -320,7 +320,7 @@ const ConditionRow: React.FC<ConditionRowProps> = ({ condition, fields, onChange
                 aria-label="Remove condition"
                 icon={<MdClose size={12} />}
                 size="sm"
-                borderRadius={0}
+                borderRadius={RADIUS.sm}
                 bg="transparent"
                 color={colors.fail}
                 _hover={{ bg: colors.failQuarter }}
@@ -402,7 +402,7 @@ const GroupEditor: React.FC<GroupEditorProps> = ({
                         aria-label="Remove group"
                         icon={<MdClose size={12} />}
                         size="sm"
-                        borderRadius={0}
+                        borderRadius={RADIUS.sm}
                         bg="transparent"
                         color={colors.fail}
                         _hover={{ bg: colors.failQuarter }}
@@ -513,23 +513,22 @@ const ExpressionBuilder: React.FC<ExpressionBuilderProps> = ({
         <Modal isOpen={isOpen} onClose={onClose} size="4xl" scrollBehavior="inside">
             <ModalOverlay />
             <ModalContent
-                bgColor={colors.bg}
+                bgColor={colors.surfaceAlt}
                 textColor={colors.fore}
-                fontFamily="courier new"
-                borderRadius={0}
-                borderColor={colors.fore}
+                borderRadius={RADIUS.lg}
+                borderColor={colors.border}
                 borderWidth={1}
                 onMouseDown={stopPropagation}
                 onTouchStart={stopPropagation}
             >
-                <ModalHeader borderBottomColor={colors.fore} borderBottomWidth={1} fontSize={18}>
+                <ModalHeader borderBottomColor={colors.border} borderBottomWidth={1} fontSize={18}>
                     Filter
                 </ModalHeader>
                 <ModalCloseButton
                     borderWidth={1}
-                    borderRadius={0}
-                    borderColor={colors.fore}
-                    _hover={{ bgColor: colors.fore, color: colors.bg }}
+                    borderRadius={RADIUS.lg}
+                    borderColor={colors.border}
+                    _hover={{ bgColor: colors.surfaceSubtle, color: colors.fore }}
                 />
                 <ModalBody paddingTop={5}>
                     {fields.length === 0 ? (
@@ -556,7 +555,7 @@ const ExpressionBuilder: React.FC<ExpressionBuilderProps> = ({
                                 whiteSpace="pre-wrap"
                                 bg={colors.bgQuarter}
                                 color={colors.fore}
-                                borderRadius={0}
+                                borderRadius={RADIUS.lg}
                                 padding={2}
                                 fontSize="xs"
                             >

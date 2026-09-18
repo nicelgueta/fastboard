@@ -8,7 +8,7 @@ import {
     NumberDecrementStepper
 
 } from "@chakra-ui/react";
-import useAppColors from "../../hooks/useAppColors";
+import useAppColors, { RADIUS } from "../../hooks/useAppColors";
 import { componentType } from "../../interfaces";
 
 interface FBNumberInputProps extends NumberInputProps {
@@ -40,7 +40,7 @@ const FBNumberInput: React.FC<FBNumberInputProps> = ({
                      bg: colors[typ+"Barely"]
                  }}
                  padding={2}
-                 borderRadius={0}
+                 borderRadius={RADIUS.md}
                  borderWidth={1}
             />
             <NumberInputStepper>

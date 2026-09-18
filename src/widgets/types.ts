@@ -35,7 +35,22 @@ export interface TableWidgetExports {
    * same format DataSource.query returns (see src/data/types.ts); decode with
    * src/data/decode.ts rather than parsing by hand.
    */
-  setResult: (result: { bytes: Uint8Array; format: 'arrow-ipc' | 'parquet'; totalRows: number; schema?: TableSchema }) => void;
+  setResult: (result: TablePushedResult) => void;
+  /** Drop a pushed result and return to querying the bound table directly. */
+  releaseResult: () => void;
+}
+
+/**
+ * A result set pushed into a table widget from elsewhere (today: the SQL
+ * editor). `source` names the widget that produced it so the table can tell
+ * the user what is driving its contents and offer to release it.
+ */
+export interface TablePushedResult {
+  bytes: Uint8Array;
+  format: 'arrow-ipc' | 'parquet';
+  totalRows: number;
+  schema?: TableSchema;
+  source?: { wKey: string; name: string };
 }
 
 /** Published by the code editor widget. */

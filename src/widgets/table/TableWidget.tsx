@@ -7,12 +7,18 @@ import {
     themeQuartz,
     colorSchemeDark,
     type Theme,
+    type IDatasource,
+    type IGetRowsParams,
+    type GridApi,
+    type GridReadyEvent,
+    type PaginationChangedEvent,
 } from 'ag-grid-community';
 import { useColorMode } from '@chakra-ui/color-mode';
 import useAppColors from '../../hooks/useAppColors';
 import { stopPropagation } from '../../components/common';
 import useUserAlert from '../../hooks/useUserAlert';
-import { useWidgetState, usePublishExports } from '../../store/hooks';
+import { useWidgetState, usePublishExports, useEditorLinks } from '../../store/hooks';
+import ConnectionBadge from '../ConnectionBadge';
 import { WidgetElementProps } from '../../interfaces';
 import type { TableWidgetExports } from '../types';
 import type { DataSource, Expression, FieldDef, FieldType, TableSchema } from '../../data/types';
@@ -25,6 +31,10 @@ import FBInput from '../../components/primitive/Input';
 import FBSelect from '../../components/primitive/Select';
 import ExpressionBuilder from './ExpressionBuilder';
 import { schemaToColDefs } from './colDefs';
+import { useAppSettings } from '../../store/appSettings';
+import type { SortSpec } from '../../data/types';
+import type { TablePushedResult } from '../types';
+import useDataSourcesConfig from '../../hooks/useDataSourcesConfig';
 
 // Registered once at module scope, per ag-grid v36's Theming/Modules API -
 // without this the grid renders nothing (see PLAN.md Phase 6a).
@@ -40,7 +50,6 @@ interface TablePersistedState {
     tableName?: string;
     filter?: Expression;
     pageSize?: number;
-    page?: number;
     // Set when the SQL editor (Phase 7) pushed a result via setResult -
     // that result bypasses the bound DataSource / server pagination.
     pushedSchema?: TableSchema;
@@ -49,13 +58,18 @@ interface TablePersistedState {
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250, 500];
 
 /**
- * Client-side row model (ag-grid Community) held one page of rows at a
- * time, fetched from DataSource.query with limit/offset - rather than
- * loading a whole (possibly huge) result set into the browser and letting
- * ag-grid's own pagination slice it. This keeps memory bounded and matches
- * the paged QueryRequest/QueryResult contract in src/data/types.ts. Own
- * prev/next + page-size controls drive it; ag-grid's built-in pagination UI
- * is left off (`pagination={false}`).
+ * Bound tables use ag-grid's own Infinite Row Model (Community) plus its
+ * native pagination UI: the grid asks our IDatasource for startRow/endRow
+ * blocks and we translate that 1:1 into DataSource.query({offset, limit}) -
+ * duckdb (or a remote backend) does the real paging, the grid never holds
+ * more than one page's worth of rows. Sorting comes from the same place
+ * (IGetRowsParams.sortModel), so there is no separate sort state to keep in
+ * sync - see colDefs.ts's serverSort no-op comparator for why ag-grid's own
+ * client-side sort must stay disabled for this row model.
+ *
+ * A pushed result (SQL editor -> setResult) is the opposite case: the whole
+ * result set is already in memory, so that path uses ag-grid's default
+ * client-side row model with pagination off (see pushedMode below).
  */
 const TableWidget: React.FC<TableWidgetProps> = (props) => {
     const { wKey, isStatic, defaultPageSize, sourceTableName, showFilterBar } = props;
@@ -63,16 +77,19 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
     const { colorMode } = useColorMode();
     const alert = useUserAlert();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const gridApiRef = React.useRef<GridApi | null>(null);
 
     const [state, setState] = useWidgetState<TablePersistedState>(wKey);
+    const appDefaultPageSize = useAppSettings((st) => st.table.defaultPageSize);
+    const linkedEditor = useEditorLinks()[wKey];
 
     const initialPageSize = React.useMemo(() => {
         const n = Number(defaultPageSize);
-        return PAGE_SIZE_OPTIONS.includes(n) ? n : 25;
-    }, [defaultPageSize]);
+        if (PAGE_SIZE_OPTIONS.includes(n)) return n;
+        return PAGE_SIZE_OPTIONS.includes(appDefaultPageSize) ? appDefaultPageSize : 25;
+    }, [defaultPageSize, appDefaultPageSize]);
 
     const pageSize = state.pageSize ?? initialPageSize;
-    const page = state.page ?? 0;
     const filter = state.filter;
 
     const [source, setSource] = React.useState<DataSource | null>(null);
@@ -82,10 +99,32 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
     const [loading, setLoading] = React.useState(false);
     const [tableNameInput, setTableNameInput] = React.useState('');
     const [filterOpen, setFilterOpen] = React.useState(false);
+
+    // Catalogue of bindable data sources (duckdb + whatever a host app
+    // describes at /app/table/dataSources) - see dataSourcesConfig.ts.
+    const dsConfig = useDataSourcesConfig();
+    const [selectedSourceId, setSelectedSourceId] = React.useState('duckdb');
+    React.useEffect(() => {
+        if (!dsConfig.dataSources.some((d) => d.id === selectedSourceId)) {
+            setSelectedSourceId(dsConfig.dataSources[0]?.id ?? 'duckdb');
+        }
+    }, [dsConfig, selectedSourceId]);
+    const selectedSource = dsConfig.dataSources.find((d) => d.id === selectedSourceId);
+    const [selectedTable, setSelectedTable] = React.useState('');
+    // Which widget pushed the current result set, if any.
+    const [pushedSource, setPushedSource] = React.useState<{ wKey: string; name: string } | undefined>();
     // A result pushed externally (e.g. by the SQL editor via setResult) is
     // shown as-is: it has already been limited/offset by whoever produced
-    // it, so our own pager is not meaningful against it.
+    // it, so it bypasses the bound DataSource's own paging entirely.
     const [pushedMode, setPushedMode] = React.useState(false);
+
+    // Read inside the (stable) IDatasource's getRows closure - kept fresh via
+    // the effect below rather than recreated per-render, since recreating it
+    // would otherwise be the trigger ag-grid uses to reset pagination.
+    const sourceRef = React.useRef<DataSource | null>(null);
+    const filterRef = React.useRef<Expression | undefined>(undefined);
+    React.useEffect(() => { sourceRef.current = source; }, [source]);
+    React.useEffect(() => { filterRef.current = filter; }, [filter]);
 
     // Bind (or rebind) the DuckDbDataSource whenever the persisted table
     // name changes - including on mount when restoring from a saved board.
@@ -115,55 +154,89 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [boundTableName]);
 
-    // Fetch the current page whenever source/filter/page/pageSize changes.
-    const fetchPage = React.useCallback(async () => {
-        if (!source || !schema || pushedMode) return;
-        setLoading(true);
-        try {
-            const result = await source.query({
-                filter,
-                offset: page * pageSize,
-                limit: pageSize,
-            });
-            const decoded = await resultToRows(result);
-            setRows(decoded);
-            setTotalRows(result.totalRows);
-            if (result.schema) setSchema(result.schema);
-        } catch (e) {
-            alert('Query failed', 'fail', e instanceof Error ? e.message : String(e));
-        } finally {
-            setLoading(false);
-        }
+    // Stable IDatasource for ag-grid's Infinite Row Model: getRows' startRow/
+    // endRow map straight onto DataSource.query's offset/limit, and its
+    // sortModel is what drives duckdb's ORDER BY - there is no other sort
+    // state in this component. source/filter are read from refs (kept fresh
+    // by the effect above) rather than captured here, so this object never
+    // needs to change identity; resetting to page 1 after a rebind or a new
+    // filter is done explicitly below via setGridOption('datasource', ...).
+    const datasource: IDatasource = React.useMemo(() => ({
+        getRows: (params: IGetRowsParams) => {
+            const src = sourceRef.current;
+            if (!src) {
+                params.successCallback([], 0);
+                return;
+            }
+            setLoading(true);
+            const sort: SortSpec[] = params.sortModel.map((s) => ({
+                field: s.colId,
+                direction: s.sort as 'asc' | 'desc',
+            }));
+            src.query({
+                filter: filterRef.current,
+                sort,
+                offset: params.startRow,
+                limit: params.endRow - params.startRow,
+            })
+                .then(async (result) => {
+                    const decoded = await resultToRows(result);
+                    setTotalRows(result.totalRows);
+                    if (result.schema) setSchema(result.schema);
+                    const lastRow = result.totalRows <= params.endRow ? result.totalRows : undefined;
+                    params.successCallback(decoded, lastRow);
+                })
+                .catch((e) => {
+                    alert('Query failed', 'fail', e instanceof Error ? e.message : String(e));
+                    params.failCallback();
+                })
+                .finally(() => setLoading(false));
+        },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [source, schema?.name, filter, page, pageSize, pushedMode]);
+    }), []);
 
+    // Reset the grid to row 1 and re-fetch whenever the bound source or
+    // filter changes - setGridOption('datasource', ...) is ag-grid's own
+    // mechanism for restarting an Infinite Row Model datasource.
     React.useEffect(() => {
-        fetchPage();
-    }, [fetchPage]);
+        if (pushedMode) return;
+        gridApiRef.current?.setGridOption('datasource', datasource);
+    }, [source, filter, pushedMode, datasource]);
 
-    const clampPage = (nextTotal: number, sz: number, p: number) => {
-        const maxPage = Math.max(0, Math.ceil(nextTotal / sz) - 1);
-        return Math.min(p, maxPage);
-    };
+    const onGridReady = React.useCallback((e: GridReadyEvent) => {
+        gridApiRef.current = e.api;
+    }, []);
+
+    const onPaginationChanged = React.useCallback((e: PaginationChangedEvent) => {
+        const sz = e.api.paginationGetPageSize();
+        if (PAGE_SIZE_OPTIONS.includes(sz) && sz !== pageSize) {
+            setState({ pageSize: sz });
+        }
+    }, [pageSize, setState]);
 
     const applyFilter = React.useCallback((expr: Expression | undefined) => {
         setPushedMode(false);
-        setState({ filter: expr, page: 0 });
+        setState({ filter: expr });
     }, [setState]);
 
-    const setResult = React.useCallback((result: { bytes: Uint8Array; format: 'arrow-ipc' | 'parquet'; totalRows: number; schema?: TableSchema }) => {
+    const setResult = React.useCallback((result: TablePushedResult) => {
         setLoading(true);
         resultToRows(result)
             .then((decoded) => {
                 setPushedMode(true);
+                setPushedSource(result.source);
                 setRows(decoded);
                 setTotalRows(result.totalRows);
                 if (result.schema) setSchema(result.schema);
-                setState({ page: 0 });
             })
             .catch((e) => alert('Failed to decode pushed result', 'fail', e instanceof Error ? e.message : String(e)))
             .finally(() => setLoading(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const releaseResult = React.useCallback(() => {
+        setPushedMode(false);
+        setPushedSource(undefined);
     }, []);
 
     const tableExports: TableWidgetExports = {
@@ -172,6 +245,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
         source: source ?? undefined,
         applyFilter,
         setResult,
+        releaseResult,
     };
     // TableWidgetExports (src/widgets/types.ts) has no index signature, while
     // usePublishExports's WidgetExports param does - cast rather than widen
@@ -179,12 +253,22 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
     usePublishExports(
         wKey,
         tableExports,
-        [wKey, source?.id ?? '', schema?.name ?? '', applyFilter, setResult],
+        [wKey, source?.id ?? '', schema?.name ?? '', applyFilter, setResult, releaseResult],
     );
 
+    const hasConfiguredTables = (selectedSource?.tables.length ?? 0) > 0;
+
     const bindTable = () => {
-        const name = tableNameInput.trim();
+        const name = (hasConfiguredTables ? selectedTable : tableNameInput).trim();
         if (!name) return;
+        if (!selectedSource || selectedSource.kind !== 'duckdb') {
+            alert(
+                'Not supported yet',
+                'warning',
+                `${selectedSource?.label ?? 'This data source'} isn't wired up to the table widget yet - only DuckDB is currently supported.`,
+            );
+            return;
+        }
         try {
             sanitizeTableName(name);
         } catch (e) {
@@ -192,8 +276,9 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
             return;
         }
         setPushedMode(false);
-        setState({ tableName: name, filter: undefined, page: 0 });
+        setState({ tableName: name, filter: undefined });
         setTableNameInput('');
+        setSelectedTable('');
     };
 
     const handleFile = async (file: File) => {
@@ -208,7 +293,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
             else if (ext === 'parquet') sch = await registerParquet(file, safeName);
             else throw new Error(`Unsupported file type ".${ext}" - use CSV, JSON or Parquet.`);
             setPushedMode(false);
-            setState({ tableName: sch.name, filter: undefined, page: 0 });
+            setState({ tableName: sch.name, filter: undefined });
             alert('Loaded', 'success', `${sch.name}: ${sch.rowCount ?? '?'} rows`);
         } catch (e) {
             alert('Upload failed', 'fail', e instanceof Error ? e.message : String(e));
@@ -217,23 +302,51 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
         }
     };
 
+    const tableSettings = useAppSettings((st) => st.table);
+
     const theme: Theme = React.useMemo(() => {
         const base = themeQuartz.withParams({
-            backgroundColor: colors.bg,
+            backgroundColor: colors.surface,
             foregroundColor: colors.fore,
             accentColor: colors.info,
-            borderColor: colors.foreQuarter,
-            headerBackgroundColor: colors.bgQuarter,
-            headerTextColor: colors.fore,
+            borderColor: colors.border,
+            // Header reads as a distinct band rather than melting into row 1.
+            headerBackgroundColor: colors.surfaceAlt,
+            headerTextColor: colors.foreHalf,
+            headerFontWeight: 600,
+            headerFontSize: tableSettings.fontSize - 1,
+            headerHeight: tableSettings.headerHeight,
+            headerColumnBorder: tableSettings.columnBorders,
+            headerColumnResizeHandleColor: colors.borderStrong,
             rowHoverColor: colors.infoBarely,
-            oddRowBackgroundColor: colors.bgQuarter,
-            fontFamily: 'courier new',
+            selectedRowBackgroundColor: colors.infoQuarter,
+            oddRowBackgroundColor: tableSettings.stripeRows ? colors.surfaceSubtle : colors.surface,
+            rowBorder: true,
+            columnBorder: tableSettings.columnBorders,
+            wrapperBorder: true,
+            wrapperBorderRadius: 8,
+            spacing: 6,
+            fontSize: tableSettings.fontSize,
+            rowHeight: tableSettings.rowHeight,
+            cellHorizontalPadding: 14,
+            fontFamily: tableSettings.monospaceCells
+                ? 'ui-monospace, SFMono-Regular, Menlo, monospace'
+                : 'inherit',
+            borderRadius: 8,
         });
         return colorMode === 'dark' ? base.withPart(colorSchemeDark) : base;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [colorMode, colors.bg, colors.fore, colors.info, colors.foreQuarter, colors.bgQuarter, colors.infoBarely]);
+    }, [
+        colorMode,
+        colors.surface, colors.surfaceAlt, colors.surfaceSubtle, colors.fore, colors.foreHalf,
+        colors.info, colors.infoBarely, colors.infoQuarter, colors.border, colors.borderStrong,
+        tableSettings,
+    ]);
 
-    const colDefs = React.useMemo(() => (schema ? schemaToColDefs(schema) : []), [schema]);
+    const colDefs = React.useMemo(
+        () => (schema ? schemaToColDefs(schema, { serverSort: !pushedMode }) : []),
+        [schema, pushedMode],
+    );
 
     const filterSummary = React.useMemo(() => {
         if (!filter || !schema) return null;
@@ -244,43 +357,70 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
         }
     }, [filter, schema]);
 
-    const maxPage = pushedMode ? 0 : Math.max(0, Math.ceil(totalRows / pageSize) - 1);
     const showFilterBarResolved = showFilterBar !== false;
 
     return (
         <Box h="100%" display="flex" flexDirection="column" padding={2} onMouseDown={stopPropagation} onTouchStart={stopPropagation}>
             {!boundTableName && !pushedMode ? (
                 <Box borderWidth={1} borderColor={colors.foreQuarter} padding={4} marginBottom={2}>
-                    <Text marginBottom={2}>Bind an existing duckdb table, or upload a CSV / JSON / Parquet file.</Text>
+                    <Text marginBottom={2}>Bind a table from a data source, or upload a CSV / JSON / Parquet file into DuckDB.</Text>
                     <HStack marginBottom={2}>
-                        <FBInput
+                        <FBSelect
                             typ="info"
-                            placeholder="existing table name"
-                            value={tableNameInput}
-                            setValue={setTableNameInput}
+                            w="220px"
+                            options={dsConfig.dataSources.map((d) => ({ label: d.label, value: d.id }))}
+                            value={selectedSourceId}
+                            setValue={setSelectedSourceId}
                             isDisabled={isStatic}
                         />
-                        <FBButton typ="info" onClick={bindTable} isDisabled={isStatic || !tableNameInput.trim()}>Load</FBButton>
+                        {hasConfiguredTables ? (
+                            <FBSelect
+                                typ="info"
+                                options={selectedSource!.tables.map((t) => ({ label: t.label ?? t.name, value: t.name }))}
+                                value={selectedTable}
+                                setValue={setSelectedTable}
+                                isDisabled={isStatic}
+                            />
+                        ) : (
+                            <FBInput
+                                typ="info"
+                                placeholder="existing table name"
+                                value={tableNameInput}
+                                setValue={setTableNameInput}
+                                isDisabled={isStatic}
+                            />
+                        )}
+                        <FBButton
+                            typ="info"
+                            onClick={bindTable}
+                            isDisabled={isStatic || !(hasConfiguredTables ? selectedTable : tableNameInput).trim()}
+                        >
+                            Load
+                        </FBButton>
                     </HStack>
-                    <FBButton
-                        typ="success"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        isDisabled={isStatic}
-                    >
-                        Upload file…
-                    </FBButton>
-                    <ChakraFileInput
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".csv,.json,.parquet"
-                        display="none"
-                        onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleFile(f);
-                            e.target.value = '';
-                        }}
-                    />
+                    {selectedSourceId === 'duckdb' ? (
+                        <>
+                            <FBButton
+                                typ="success"
+                                variant="outline"
+                                onClick={() => fileInputRef.current?.click()}
+                                isDisabled={isStatic}
+                            >
+                                Upload file…
+                            </FBButton>
+                            <ChakraFileInput
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".csv,.json,.parquet"
+                                display="none"
+                                onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleFile(f);
+                                    e.target.value = '';
+                                }}
+                            />
+                        </>
+                    ) : null}
                 </Box>
             ) : null}
 
@@ -289,6 +429,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                     <Text fontSize="sm" color={colors.foreHalf}>
                         {boundTableName ?? 'query result'}
                     </Text>
+                    <ConnectionBadge connected={!!linkedEditor} label={linkedEditor?.name} />
                     <FBButton
                         typ="info"
                         variant="outline"
@@ -313,43 +454,22 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                         </HStack>
                     ) : null}
                     <Box flex={1} />
-                    {!pushedMode ? (
-                        <>
-                            <FBSelect
-                                typ="info"
-                                w="90px"
-                                options={PAGE_SIZE_OPTIONS.map((n) => ({ label: String(n), value: n }))}
-                                value={pageSize}
-                                setValue={(v: string) => {
-                                    const sz = Number(v);
-                                    setState({ pageSize: sz, page: clampPage(totalRows, sz, page) });
-                                }}
-                            />
-                            <FBButton
-                                typ="info"
-                                variant="outline"
-                                size="sm"
-                                isDisabled={page <= 0}
-                                onClick={() => setState({ page: Math.max(0, page - 1) })}
-                            >
-                                ‹
-                            </FBButton>
-                            <Text fontSize="sm">
-                                {totalRows === 0 ? '0 rows' : `${page * pageSize + 1}–${Math.min(totalRows, (page + 1) * pageSize)} of ${totalRows}`}
+                    {pushedMode ? (
+                        <HStack spacing={2}>
+                            <Text fontSize="sm" color={colors.foreHalf}>
+                                {totalRows} rows{pushedSource ? ` — filtered by ${pushedSource.name}` : ' (query result)'}
                             </Text>
                             <FBButton
-                                typ="info"
+                                typ="warning"
                                 variant="outline"
-                                size="sm"
-                                isDisabled={page >= maxPage}
-                                onClick={() => setState({ page: Math.min(maxPage, page + 1) })}
+                                size="xs"
+                                onClick={releaseResult}
+                                isDisabled={isStatic}
                             >
-                                ›
+                                Unlink
                             </FBButton>
-                        </>
-                    ) : (
-                        <Text fontSize="sm" color={colors.foreHalf}>{totalRows} rows (query result)</Text>
-                    )}
+                        </HStack>
+                    ) : null}
                 </HStack>
             ) : null}
 
@@ -361,11 +481,25 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                 ) : null}
                 {schema ? (
                     <AgGridReact
+                        // rowModelType is only read at grid creation, so a
+                        // key forces a clean remount on the (infrequent)
+                        // transition between a bound table and a pushed
+                        // query result rather than leaving a stale grid.
+                        key={pushedMode ? 'pushed' : 'bound'}
                         theme={theme}
                         columnDefs={colDefs}
-                        rowData={rows}
-                        pagination={false}
+                        onGridReady={onGridReady}
+                        onPaginationChanged={onPaginationChanged}
                         animateRows={false}
+                        {...(pushedMode
+                            ? { rowData: rows, pagination: false }
+                            : {
+                                rowModelType: 'infinite' as const,
+                                datasource,
+                                pagination: true,
+                                paginationPageSize: pageSize,
+                                paginationPageSizeSelector: PAGE_SIZE_OPTIONS,
+                            })}
                     />
                 ) : (
                     <Center h="100%">

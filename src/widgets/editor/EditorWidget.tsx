@@ -8,10 +8,12 @@ import debounce from 'lodash/debounce';
 import { WidgetElementProps } from '../../interfaces';
 import { stopPropagation } from '../../components/common';
 import useAppColors from '../../hooks/useAppColors';
-import { useWidgetState, useWidgetsByType, useWidgetExports, usePublishExports } from '../../store/hooks';
+import useUserAlert from '../../hooks/useUserAlert';
+import { useWidgetState, useWidgetsByType, useWidgetExports, usePublishExports, useEditorLinks } from '../../store/hooks';
 import { useWidgetStore, WidgetExports } from '../../store/widgetStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { TableWidgetExports, EditorWidgetExports } from '../types';
+import ConnectionBadge from '../ConnectionBadge';
 
 import './monaco-setup';
 import { registerSqlCompletions, tableWidgetsToCompletionSources, CompletionSource } from './sqlCompletions';
@@ -54,6 +56,7 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
   const [colors] = useAppColors();
   const { colorMode } = useColorMode();
 
+  const alert = useUserAlert();
   const [persisted, setPersisted] = useWidgetState<EditorPersistedState>(wKey);
 
   const [content, setContent] = React.useState<string>(
@@ -71,10 +74,24 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
   const editorRef = React.useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const completionDisposableRef = React.useRef<Monaco.IDisposable | null>(null);
 
+  const ownName = useWidgetStore((s) => s.widgets[wKey]?.name ?? 'SQL editor');
   const tableWidgets = useWidgetsByType('table');
   const targetRecord = tableWidgets.find((w) => w.wKey === targetWKey);
   const isDangling = !!targetWKey && !targetRecord;
   const targetExports = useWidgetExports<TableWidgetExports>(targetWKey);
+  const isConnected = !!targetWKey && !isDangling && !!targetExports;
+
+  // Table <-> editor is 1:1 - a table already claimed by a different editor
+  // is offered (so its name is visible) but not selectable.
+  const editorLinks = useEditorLinks();
+  const linkedElsewhere = React.useMemo(
+    () => new Set(
+      Object.entries(editorLinks)
+        .filter(([, editor]) => editor.wKey !== wKey)
+        .map(([tableWKey]) => tableWKey)
+    ),
+    [editorLinks, wKey]
+  );
 
   // Live completion sources: table names + column names of every table
   // widget currently on the board, kept in a ref so the completion provider
@@ -112,6 +129,15 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
 
   const handleTargetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const wk = e.target.value || undefined;
+    if (wk && linkedElsewhere.has(wk)) {
+      const owner = editorLinks[wk];
+      alert(
+        'Table already linked',
+        'warning',
+        `"${tableWidgets.find((w) => w.wKey === wk)?.name ?? wk}" is already linked to "${owner?.name ?? 'another editor'}" - disconnect it there first.`,
+      );
+      return;
+    }
     setTargetWKey(wk);
     setOutcome(null);
     setPersisted({ targetWKey: wk });
@@ -130,14 +156,18 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
     setRunning(true);
     setOutcome(null);
     try {
-      const { totalRows, elapsedMs } = await runSqlAgainstTarget(contentRef.current, targetExports);
+      const { totalRows, elapsedMs } = await runSqlAgainstTarget(
+        contentRef.current,
+        targetExports,
+        { wKey, name: ownName }
+      );
       setOutcome({ rows: totalRows, elapsedMs });
     } catch (err: any) {
       setOutcome({ rows: 0, elapsedMs: 0, error: err?.message ?? String(err) });
     } finally {
       setRunning(false);
     }
-  }, [language, targetWKey, isDangling, targetExports]);
+  }, [language, targetWKey, isDangling, targetExports, wKey, ownName]);
 
   // addCommand captures whatever handleRun was at mount time - keep a ref so
   // Ctrl/Cmd+Enter always calls the latest version.
@@ -208,8 +238,8 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
               borderColor={colors.foreQuarter}
             >
               {tableWidgets.map((w) => (
-                <option key={w.wKey} value={w.wKey}>
-                  {w.name}
+                <option key={w.wKey} value={w.wKey} disabled={linkedElsewhere.has(w.wKey)}>
+                  {w.name}{linkedElsewhere.has(w.wKey) ? ` (linked to ${editorLinks[w.wKey]?.name})` : ''}
                 </option>
               ))}
             </Select>
@@ -222,6 +252,7 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
             >
               Run (Ctrl/Cmd+Enter)
             </Button>
+            <ConnectionBadge connected={isConnected} label={isConnected ? targetRecord?.name : undefined} />
             {isDangling ? (
               <Text color={colors.fail} fontSize="sm">
                 Linked widget no longer exists

@@ -67,17 +67,16 @@ const IntroModal: React.FC<IntroModalProps> = ({ isOpen, setIsOpen, onDismiss })
     <Modal isOpen={isOpen} onClose={close} size="3xl">
       <ModalOverlay />
       <ModalContent
-        bgColor={colors.bg}
+        bgColor={colors.surfaceAlt}
         textColor={colors.fore}
-        fontFamily="courier new"
-        borderRadius={0}
-        borderColor={colors.fore}
+                borderRadius="lg"
+        borderColor={colors.border}
         borderWidth={1}
         onMouseDown={stopPropagation}
         onTouchStart={stopPropagation}
       >
         <ModalHeader
-          borderBottomColor={colors.fore}
+          borderBottomColor={colors.border}
           borderBottomWidth={1}
           fontSize={18}
         >
@@ -85,9 +84,9 @@ const IntroModal: React.FC<IntroModalProps> = ({ isOpen, setIsOpen, onDismiss })
         </ModalHeader>
         <ModalCloseButton
           borderWidth={1}
-          borderRadius={0}
-          borderColor={colors.fore}
-          _hover={{ bgColor: colors.fore, color: colors.bg }}
+          borderRadius="lg"
+          borderColor={colors.border}
+          _hover={{ bgColor: colors.surfaceSubtle, color: colors.fore }}
         />
         <ModalBody paddingTop={5} minH="220px">
           {current.render(colors)}

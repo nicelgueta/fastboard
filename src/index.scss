@@ -1,68 +1,44 @@
-.fastboard-dark {
-    ::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #4A5568;
-      border-radius: 5px;
-      background-clip: padding-box;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #CBD5E0;
-    }
-    ::-webkit-scrollbar-track {
-      background: #171923;
-      background-clip: padding-box;
-      border-radius: 5px;
-      box-shadow: inset 7px 10px 12px #1A202C;
-    }
-  }
-  .fastboard-light {
-    ::-webkit-scrollbar {
-      width: 7px;
-      height: 7px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background:  linear-gradient(13deg, rgba(125, 121, 212,1) 35%, rgba(35, 32, 79,1) 65%);
-      border-radius: 5px;
-      background-clip: padding-box;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(68, 124, 173,1);
-    }
-    ::-webkit-scrollbar-track {
-      background: rgba(125, 121, 212,0.3);
-      background-clip: padding-box;
-      height: 5px;
-      border-radius: 5px;
-      box-shadow: inset 7px 10px 12px rgba(22, 22, 33, 1);
-    }
-  }
-  .circle {
-    border-radius: 50%;
-    box-shadow: 0px 0px 1px 1px #0000001a;
-  }
+/* Scrollbars and shared effects read the live theme through CSS variables
+   set on the app root (see Main.tsx) rather than hard-coding hex, so they
+   follow the selected accent and colour mode instead of staying dark. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fb-border, rgba(128, 128, 128, 0.25));
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fb-border-strong, rgba(128, 128, 128, 0.45));
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+* {
+  scrollbar-color: var(--fb-border, rgba(128,128,128,0.25)) transparent;
+  scrollbar-width: thin;
+}
 
-  .pulse {
-    animation: pulse-animation 2s infinite;
-  }
-  @keyframes pulse-animation {
-    0% {
-      box-shadow: 0 0 0 0px rgba(255,0,0, 0.9);
-    }
-    100% {
-      box-shadow: 0 0 0 20px rgba(237, 136, 54, 0);
-    }
-  }
+.circle {
+  border-radius: 50%;
+  box-shadow: 0px 0px 1px 1px #0000001a;
+}
 
-  .tradingview-widget-container {
-    position: relative;
-  }
-  .tradingview-widget-container:before {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 34px;
-    background-color: #fff;
-  }
+.pulse {
+  animation: pulse-animation 2s infinite;
+}
+@keyframes pulse-animation {
+  0%   { box-shadow: 0 0 0 0px var(--fb-accent, rgba(255, 0, 0, 0.9)); }
+  100% { box-shadow: 0 0 0 20px rgba(0, 0, 0, 0); }
+}
+
+.tradingview-widget-container {
+  position: relative;
+}

@@ -65,7 +65,11 @@ const ToolMenu: React.FC<ToolMenuProps> = ({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const sortedItems = React.useMemo(
-    () => [...items].sort((a, b) => a.label.localeCompare(b.label)),
+    () =>
+      [...items].sort(
+        (a, b) =>
+          (a.group || '').localeCompare(b.group || '') || a.label.localeCompare(b.label)
+      ),
     [items]
   );
 
@@ -185,7 +189,7 @@ const ToolMenu: React.FC<ToolMenuProps> = ({
         bg={colors[`${menuTyp}Half`]}
         textColor={colors.fore}
         borderColor={colors[`${menuTyp}Half`]}
-        borderRadius={0}
+        borderRadius="lg"
         borderWidth={1}
         _hover={{ bg: colors[`${menuTyp}3Quarter`] }}
         _active={{ bg: colors[`${menuTyp}3Quarter`] }}
@@ -193,9 +197,9 @@ const ToolMenu: React.FC<ToolMenuProps> = ({
         {label}
       </MenuButton>
       <MenuList
-        bg={colors.bg}
+        bg={colors.surfaceAlt}
         borderColor={colors[`${menuTyp}Half`]}
-        borderRadius={0}
+        borderRadius="lg"
         maxH="60vh"
         overflowY="auto"
         zIndex={20}
@@ -209,7 +213,7 @@ const ToolMenu: React.FC<ToolMenuProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onInputKeyDown}
-            borderRadius={0}
+            borderRadius="lg"
             borderColor={colors[`${menuTyp}Half`]}
             textColor={colors.fore}
             bg={colors.bgHalf}
@@ -225,14 +229,29 @@ const ToolMenu: React.FC<ToolMenuProps> = ({
           </Box>
         ) : (
           filteredItems.map((item, i) => (
+            <React.Fragment key={item.value}>
+            {/* Section header whenever the group changes, so several kinds of
+                item (built-in tools, saved tools, ...) can share one menu. */}
+            {item.group && item.group !== filteredItems[i - 1]?.group ? (
+              <Text
+                px={3}
+                pt={2}
+                pb={1}
+                fontSize="10px"
+                letterSpacing="0.08em"
+                textTransform="uppercase"
+                color={colors.foreHalf}
+              >
+                {item.group}
+              </Text>
+            ) : null}
             <MenuItem
-              key={item.value}
               isDisabled={item.disabled}
               onClick={() => selectItem(item)}
               onMouseEnter={() => setHighlighted(i)}
-              bg={i === highlighted ? colors[`${menuTyp}Quarter`] : colors.bg}
+              bg={i === highlighted ? colors.infoQuarter : 'transparent'}
               _hover={{
-                bg: item.disabled ? colors.bg : colors[`${menuTyp}Quarter`],
+                bg: item.disabled ? 'transparent' : colors.infoQuarter,
               }}
               opacity={item.disabled ? 0.4 : 1}
             >
@@ -254,6 +273,7 @@ const ToolMenu: React.FC<ToolMenuProps> = ({
                 )}
               </VStack>
             </MenuItem>
+            </React.Fragment>
           ))
         )}
       </MenuList>

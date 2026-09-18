@@ -1,6 +1,6 @@
 import React from "react";
 import { Center, Select, SelectProps } from "@chakra-ui/react";
-import useAppColors from "../../hooks/useAppColors";
+import useAppColors, { RADIUS } from "../../hooks/useAppColors";
 import { SelectOption, componentType } from "../../interfaces";
 
 export interface FBSelectProps extends SelectProps {
@@ -20,14 +20,13 @@ const FBSelect: React.FC<FBSelectProps> = ({
             w="100%"
             h={"100%"}
         >
-            <Select 
+            <Select
                 variant={"outline"}
-                // bg={colors[typ+"Barely"]}
-                borderRadius={0}
+                borderRadius={RADIUS.md}
                 borderWidth={1}
                 textColor={colors.fore}
                 borderColor={colors[typ+"Half"]}
-                bg={fillColor ? colors[typ+"Dark"] : undefined}
+                bg={fillColor ? colors[typ+"Dark"] : colors.surface}
                 _hover={{
                     borderColor: colors[typ],
                 }}

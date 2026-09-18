@@ -1,6 +1,6 @@
 import React from "react";
 import { Textarea , TextareaProps } from "@chakra-ui/react";
-import useAppColors from "../../hooks/useAppColors";
+import useAppColors, { RADIUS } from "../../hooks/useAppColors";
 import { componentType } from "../../interfaces";
 
 interface FBTextareaProps extends TextareaProps {
@@ -27,7 +27,7 @@ const FBTextarea: React.FC<FBTextareaProps> = ({
                 bg: colors[typ+"Barely"]
             }}
             padding={2}
-            borderRadius={0}
+            borderRadius={RADIUS.md}
             borderWidth={1}
             onChange={setValue ? (e) => setValue(e.target.value): props.onChange}
             {...props}

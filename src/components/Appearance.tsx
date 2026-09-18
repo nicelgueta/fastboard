@@ -33,15 +33,15 @@ const Appearance: React.FC = () => {
                 />
             </PopoverTrigger>
             <PopoverContent
-                bg={colors.bg}
-                borderColor={colors.fore}
+                bg={colors.surfaceAlt}
+                borderColor={colors.border}
                 borderWidth={1}
-                borderRadius={0}
+                borderRadius="lg"
                 color={colors.fore}
                 w="auto"
             >
                 <PopoverArrow bg={colors.bg} />
-                <PopoverHeader borderBottomWidth={1} borderColor={colors.foreQuarter} fontFamily="courier new">
+                <PopoverHeader borderBottomWidth={1} borderColor={colors.border} fontFamily="courier new">
                     Accent color
                 </PopoverHeader>
                 <PopoverBody>

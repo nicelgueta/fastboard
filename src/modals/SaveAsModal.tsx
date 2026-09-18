@@ -13,15 +13,15 @@ import {
     Center,
     Tooltip
 } from '@chakra-ui/react';
-import useAppColors from '../hooks/useAppColors';
-import useKvStore from '../hooks/useKvStore';
+import useAppColors, { RADIUS } from '../hooks/useAppColors';
+import { getStorage, Collection } from '../store/storage';
 import { stopPropagation } from '../components/common';
 
 import FBButton from '../components/primitive/Button';
 import FBInput from '../components/primitive/Input';
 
 interface SaveAsModalProps {
-    storeName: string;
+    storeName: Collection;
     objToSave: any;
     isOpen: boolean;
     setIsOpen: (value: boolean) => void;
@@ -43,16 +43,14 @@ const SaveAsModal: React.FC<SaveAsModalProps> = ({
     const [saveKey, setSaveKey] = React.useState<string>("");
     const [currentNames, setCurrentNames] = React.useState<string[]>([]);
 
-    const { set: setObject, list: listObjectKeys } = useKvStore(storeName);
-
     React.useEffect(() => {
-        const names = listObjectKeys();
-        setCurrentNames( names || []);
-    }, []);
+        if (!isOpen) return;
+        getStorage().list(storeName).then(setCurrentNames).catch(() => setCurrentNames([]));
+    }, [isOpen, storeName]);
 
-    const saveObject = () => {
+    const saveObject = async () => {
         if (saveKey) {
-            setObject(saveKey, objToSave);
+            await getStorage().set(storeName, saveKey, objToSave);
             setIsOpen(false);
             callback && callback(saveKey);
         }
@@ -65,17 +63,16 @@ const SaveAsModal: React.FC<SaveAsModalProps> = ({
         >
             <ModalOverlay />
             <ModalContent
-                bgColor={colors.bg}
+                bgColor={colors.surfaceAlt}
                 textColor={colors.fore}
-                fontFamily="courier new"
-                borderRadius={0}
-                borderColor={colors.fore}
+                borderRadius={RADIUS.lg}
+                borderColor={colors.border}
                 borderWidth={1}
                 onMouseDown={stopPropagation}
                 onTouchStart={stopPropagation}
             >
                 <ModalHeader
-                    borderBottomColor={colors.fore}
+                    borderBottomColor={colors.border}
                     borderBottomWidth={1}
                     fontSize={18}
                 >
@@ -83,9 +80,9 @@ const SaveAsModal: React.FC<SaveAsModalProps> = ({
                 </ModalHeader>
                 <ModalCloseButton
                     borderWidth={1}
-                    borderRadius={0}
-                    borderColor={colors.fore}
-                    _hover={{ bgColor: colors.fore, color: colors.bg }}
+                    borderRadius={RADIUS.lg}
+                    borderColor={colors.border}
+                    _hover={{ bgColor: colors.surfaceSubtle, color: colors.fore }}
                 />
                 <ModalBody paddingTop={5}>
                     <Center>
@@ -103,7 +100,7 @@ const SaveAsModal: React.FC<SaveAsModalProps> = ({
                 <ModalFooter>
                     <Tooltip
                         bg={colors.warning}
-                        borderRadius={0}
+                        borderRadius={RADIUS.lg}
                         textColor={colors.fore}
                         placement="top"
                         hasArrow
@@ -114,7 +111,7 @@ const SaveAsModal: React.FC<SaveAsModalProps> = ({
                             <FBButton
                                 typ={currentNames.includes(saveKey) ? "warning" : "info"}
                                 isOutline
-                                onClick={saveObject}
+                                onClick={() => void saveObject()}
                                 isDisabled={saveKey === ""}
                                 >
                                 Save

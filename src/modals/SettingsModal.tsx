@@ -9,7 +9,7 @@ import {
     ModalOverlay, 
     Tooltip
 } from '@chakra-ui/react';
-import useAppColors from '../hooks/useAppColors';
+import useAppColors, { RADIUS } from '../hooks/useAppColors';
 import { stopPropagation } from '../components/common';
 
 import Settings from '../components/Settings';
@@ -82,17 +82,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             >
                 <ModalOverlay />
                 <ModalContent
-                    bgColor={colors.bg}
+                    bgColor={colors.surfaceAlt}
                     textColor={colors.fore}
-                    fontFamily="courier new"
-                    borderRadius={0}
-                    borderColor={colors.fore}
+                                        borderRadius={RADIUS.lg}
+                    borderColor={colors.border}
                     borderWidth={1}
                     onMouseDown={stopPropagation}
                     onTouchStart={stopPropagation}
                 >
                     <ModalHeader
-                        borderBottomColor={colors.fore}
+                        borderBottomColor={colors.border}
                         borderBottomWidth={1}
                         fontSize={18}
                     >
@@ -100,9 +99,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </ModalHeader>
                     <ModalCloseButton
                         borderWidth={1}
-                        borderRadius={0}
-                        borderColor={colors.fore}
-                        _hover={{ bgColor: colors.fore, color: colors.bg }}
+                        borderRadius={RADIUS.lg}
+                        borderColor={colors.border}
+                        _hover={{ bgColor: colors.surfaceSubtle, color: colors.fore }}
                     />
                     <ModalBody paddingTop={5}>
                         <Settings 
@@ -115,7 +114,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <ModalFooter>
                         <Tooltip
                             bg={colors.fail}
-                            borderRadius={0}
+                            borderRadius={RADIUS.lg}
                             textColor={colors.fore}
                             placement="top"
                             hasArrow

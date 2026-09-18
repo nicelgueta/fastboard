@@ -19,7 +19,8 @@ export interface RunSqlResult {
  */
 export async function runSqlAgainstTarget(
   sql: string,
-  target: TableWidgetExports
+  target: TableWidgetExports,
+  source?: { wKey: string; name: string }
 ): Promise<RunSqlResult> {
   const db = await getDuckDb();
   const conn = await db.connect();
@@ -34,6 +35,7 @@ export async function runSqlAgainstTarget(
       format: 'arrow-ipc',
       totalRows: table.numRows,
       schema,
+      source,
     });
     return { totalRows: table.numRows, elapsedMs };
   } finally {

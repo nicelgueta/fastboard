@@ -41,11 +41,27 @@ describe('schemaToColDefs', () => {
         expect(defs[2]).toMatchObject({ field: 'active', headerName: 'active', cellDataType: 'boolean' });
     });
 
-    it('disables client-side sort/filter on every column (server-paged data, own filter UI)', () => {
+    it('keeps ag-grid\'s sort UI (server-paged data) but disables its own filter UI', () => {
         const defs = schemaToColDefs(schema);
         for (const d of defs) {
-            expect(d.sortable).toBe(false);
+            expect(d.sortable).toBe(true);
             expect(d.filter).toBe(false);
+        }
+    });
+
+    it('installs a no-op comparator for server-paged data so ag-grid never reorders a page locally', () => {
+        const defs = schemaToColDefs(schema, { serverSort: true });
+        for (const d of defs) {
+            expect(d.comparator).toBeDefined();
+            const comparator = d.comparator as (...args: any[]) => number;
+            expect(comparator(1, 2, null, null, false)).toBe(0);
+        }
+    });
+
+    it('leaves real client-side sorting on for a pushed result set', () => {
+        const defs = schemaToColDefs(schema, { serverSort: false });
+        for (const d of defs) {
+            expect(d.comparator).toBeUndefined();
         }
     });
 });

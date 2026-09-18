@@ -1,6 +1,6 @@
 import React from 'react';
 import { IconButton, IconButtonProps } from '@chakra-ui/react';
-import useAppColors from '../../hooks/useAppColors';
+import useAppColors, { RADIUS } from '../../hooks/useAppColors';
 import { componentType } from '../../interfaces';
 
 interface IconBuProps extends IconButtonProps {
@@ -13,18 +13,16 @@ const FBIconButton: React.FC<IconBuProps> = ({ typ, onClick, children, ...props 
     typ = typ || "info";
     return (
         <IconButton
-            bg={props.variant === "outline" ? colors.bg : colors[typ+"3Quarter"]}
-            textColor={props.variant === "outline" ? colors[typ] : colors.fore}
-            borderColor={colors[typ]}
-            borderRadius={0}
+            bg={props.variant === "outline" ? colors.bgHalf : colors[typ+"Half"]}
+            textColor={colors.fore}
+            borderColor={colors[typ+"Half"]}
+            borderRadius={RADIUS.md}
             borderWidth={1}
             _hover={{
-                bg: colors[typ],
-                textColor: colors.fore
+                bg: props.variant === "outline" ? colors[typ+"Quarter"] : colors[typ+"3Quarter"],
             }}
             _active={{
-                bg: colors[typ],
-                textColor: colors.fore
+                bg: colors[typ+"3Quarter"],
             }}
             {...props}
             onClick={onClick}

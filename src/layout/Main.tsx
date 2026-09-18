@@ -15,7 +15,9 @@ import {
 } from 'dockview-react';
 import useAppColors from '../hooks/useAppColors';
 import WidgetPanel from './WidgetPanel';
+import WidgetTab from './WidgetTab';
 import GroupHeaderActions from './GroupHeaderActions';
+import DockPlacementModal, { DockDirection } from './DockPlacementModal';
 import { PanelContext, PanelActions } from './PanelContext';
 import { WidgetPanelParams } from './types';
 
@@ -30,7 +32,7 @@ import {
     WidgetConfig
 } from '../interfaces';
 import useUserAlert from '../hooks/useUserAlert';
-import useKvStore from '../hooks/useKvStore';
+import { getStorage } from '../store/storage';
 import { useWidgetStore, WidgetRecord } from '../store/widgetStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -46,6 +48,20 @@ interface DashboardContainerProps {
 // left to dockview's own native tab (title + drag/dock/close) - right-click
 // gives access to the rest (rename, settings, save as, lock, maximize, ...).
 const dockviewComponents = { widget: WidgetPanel };
+// Custom tab so titles can be renamed in place by double-clicking them.
+const dockviewTabComponents = { widgetTab: WidgetTab };
+
+/**
+ * Widgets are named "<Widget name>-<n>" and names are unique across the board,
+ * so the SQL editor's target picker (and anything else that refers to a widget
+ * by name) can never be ambiguous. Picks the lowest free n rather than always
+ * incrementing, so closing "Data Table-1" frees that name again.
+ */
+const uniqueWidgetName = (base: string, taken: Set<string>): string => {
+    let n = 1;
+    while (taken.has(`${base}-${n}`)) n += 1;
+    return `${base}-${n}`;
+};
 
 // Free, non-enterprise module: powers getTabContextMenuItems below.
 // Registering is idempotent and only needs to happen once, at import time.
@@ -81,7 +97,6 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         } as WidgetDict;
     }), [storeWidgets, widgetConfig]);
     const [ currentBoardKey, setCurrentBoardKey] = useState<string>("");
-    const { get: getSavedBoard } = useKvStore('allBoards');
     const [ colors ] = useAppColors();
     const { colorMode } = useColorMode();
 
@@ -117,10 +132,17 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                 label: 'Rename',
                 action: () => {
                     const nextName = window.prompt('Rename widget', panel.title || '');
-                    if (nextName && nextName.trim()) {
-                        panel.api.setTitle(nextName.trim());
-                        renameWidget(panel.id, nextName.trim());
+                    const next = nextName?.trim();
+                    if (!next) return;
+                    const taken = Object.values(storeWidgets).some(
+                        (w) => w.wKey !== panel.id && w.name === next,
+                    );
+                    if (taken) {
+                        userAlert('Name already in use', 'fail', `Another widget is already called "${next}".`);
+                        return;
                     }
+                    panel.api.setTitle(next);
+                    renameWidget(panel.id, next);
                 },
             },
         ];
@@ -145,9 +167,16 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         return items;
     };
 
-    const loadBoard = (boardKey: string) => {
-        const boardObj = getSavedBoard(boardKey);
+    const loadBoard = async (boardKey: string) => {
+        const boardObj = await getStorage().get<{
+            layout: any;
+            widgets?: WidgetDict[];
+            widgetStates?: Record<string, any>;
+        }>('boards', boardKey);
         if (!boardObj || !dockviewApi) {
+            if (!boardObj) {
+                userAlert('Board not found', 'fail', `Could not load "${boardKey}".`);
+            }
             return;
         }
         dockviewApi.fromJSON(boardObj.layout);
@@ -175,6 +204,53 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         setWidgetSettings(key, settings);
     }
 
+    // A widget picked from the tool menu doesn't drop straight in as another
+    // tab - it waits here for the user to pick a quadrant via
+    // DockPlacementModal, unless the board is empty (nothing to dock
+    // relative to yet).
+    const [pendingAdd, setPendingAdd] = useState<{
+        type: string;
+        widgetDict: BaseWidgetDict;
+        displayName: string;
+        savedSettings?: Record<string, any>;
+    } | null>(null);
+
+    const createWidget = (
+        type: string,
+        widgetDict: BaseWidgetDict,
+        displayName: string,
+        savedSettings: Record<string, any> | undefined,
+        direction?: DockDirection,
+    ) => {
+        if (!dockviewApi) return;
+        const widgeTypeNumber = new Date().getTime();
+        const key = `${type}-${widgeTypeNumber}`;
+
+        const params: WidgetPanelParams = {
+            widgetType: type,
+            name: displayName,
+            settingsConfig: widgetDict.settings,
+            currentSettings: savedSettings,
+        };
+        dockviewApi.addPanel<WidgetPanelParams>({
+            id: key,
+            component: 'widget',
+            tabComponent: 'widgetTab',
+            title: displayName,
+            params,
+            initialWidth: widgetDict.defaultLayout.initialWidth,
+            initialHeight: widgetDict.defaultLayout.initialHeight,
+            ...(direction && direction !== 'within' ? { position: { direction } } : {}),
+        });
+
+        register({
+            wKey: key,
+            type,
+            name: displayName,
+            settings: savedSettings || {},
+        });
+    };
+
     const addWidget = (type: string, savedSettings?: Record<string, any>) => {
         if (!dockviewApi) {
             return;
@@ -199,43 +275,63 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             return;
         }
 
-        const widgeTypeNumber = new Date().getTime();
-        const key = `${type}-${widgeTypeNumber}`;
+        const displayName = uniqueWidgetName(
+            widgetDict.name,
+            new Set(Object.values(storeWidgets).map((w) => w.name)),
+        );
 
-        const params: WidgetPanelParams = {
-            widgetType: type,
-            name: widgetDict.name,
-            settingsConfig: widgetDict.settings,
-            currentSettings: savedSettings,
-        };
-        dockviewApi.addPanel<WidgetPanelParams>({
-            id: key,
-            component: 'widget',
-            title: widgetDict.name,
-            params,
-            initialWidth: widgetDict.defaultLayout.initialWidth,
-            initialHeight: widgetDict.defaultLayout.initialHeight,
-        });
-
-        register({
-            wKey: key,
-            type,
-            name: widgetDict.name,
-            settings: savedSettings || {},
-        });
+        // Nothing on the board yet - no quadrant to choose relative to.
+        if (dockviewApi.totalPanels === 0) {
+            createWidget(type, widgetDict, displayName, savedSettings);
+            return;
+        }
+        setPendingAdd({ type, widgetDict, displayName, savedSettings });
     };
+
+    const handlePlacementSelect = (direction: DockDirection) => {
+        if (!pendingAdd) return;
+        createWidget(pendingAdd.type, pendingAdd.widgetDict, pendingAdd.displayName, pendingAdd.savedSettings, direction);
+        setPendingAdd(null);
+    };
+    const handlePlacementCancel = () => setPendingAdd(null);
 
     const getCurrentLayout = () => dockviewApi?.toJSON();
 
     return (
-        <Box w={"100%"} h={"100%"} className={`fastboard-${colorMode}`} display="flex" flexDirection="column">
+        <Box
+            w={"100%"}
+            h={"100%"}
+            className={`fastboard-${colorMode}`}
+            display="flex"
+            flexDirection="column"
+            bg={colors.bg}
+            color={colors.fore}
+            // Expose the live theme to plain CSS (scrollbars in index.scss) and
+            // to any third-party surface that can read custom properties.
+            sx={{
+                '--fb-bg': colors.bg,
+                '--fb-surface': colors.surface,
+                '--fb-surface-alt': colors.surfaceAlt,
+                '--fb-fore': colors.fore,
+                '--fb-border': colors.border,
+                '--fb-border-strong': colors.borderStrong,
+                '--fb-accent': colors.info,
+            }}
+        >
             <title>{appName}</title>
+            <DockPlacementModal
+                isOpen={!!pendingAdd}
+                widgetName={pendingAdd?.displayName ?? ''}
+                onSelect={handlePlacementSelect}
+                onCancel={handlePlacementCancel}
+            />
             <Box
                 className='rg-header-nav'
                 style={{
                     borderRadius: 0,
-                    borderColor: colors.foreQuarter,
-                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderWidth: 0,
+                    borderBottomWidth: 1,
                     zIndex: 4,
                     flexShrink: 0,
                     // Definite height: the header's children size themselves
@@ -255,6 +351,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                     currentWidgets={widgets}
                     loadBoard={loadBoard}
                     currentBoardKey={currentBoardKey}
+                    setCurrentBoardKey={setCurrentBoardKey}
                 />
                 <NavMenu
                     navOpen={menuOpen}
@@ -272,6 +369,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                     <DockviewReact
                         className={`dockview-theme-${colorMode === 'dark' ? 'dark' : 'light'}`}
                         components={dockviewComponents}
+                        tabComponents={dockviewTabComponents}
                         leftHeaderActionsComponent={GroupHeaderActions}
                         getTabContextMenuItems={getTabContextMenuItems}
                         onReady={onReady}

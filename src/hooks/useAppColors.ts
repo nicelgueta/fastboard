@@ -2,6 +2,33 @@ import React from 'react';
 import { useColorMode } from '@chakra-ui/color-mode';
 import useKvStore from './useKvStore';
 
+/**
+ * The app's design tokens.
+ *
+ * The accent is not just a button color - it tints the whole theme. Backgrounds,
+ * surfaces, text and borders are all derived from the selected accent's hue, so
+ * picking "teal" shifts the entire UI rather than recoloring a few buttons.
+ *
+ * Semantic colors (success/warning/fail/info) are deliberately muted rather than
+ * fully saturated: the old palette used pure #E30E2A-style values that fought
+ * with everything around them.
+ */
+
+type RGB = [number, number, number];
+
+const mix = (c: RGB, target: RGB, amount: number): RGB => [
+    Math.round(c[0] + (target[0] - c[0]) * amount),
+    Math.round(c[1] + (target[1] - c[1]) * amount),
+    Math.round(c[2] + (target[2] - c[2]) * amount),
+];
+const rgba = (c: RGB, a: number) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a})`;
+
+const BLACK: RGB = [0, 0, 0];
+const WHITE: RGB = [255, 255, 255];
+/** Near-black / near-white anchors: never pure, so the tint stays visible. */
+const INK: RGB = [17, 19, 24];
+const PAPER: RGB = [252, 252, 253];
+
 export interface BaseColors {
     bgDark: string;
     bgLight: string;
@@ -26,8 +53,8 @@ export interface BaseColors {
     warningBarely: string;
     warningLight: string;
     warningDark: string;
-
 }
+
 export interface Colors extends BaseColors {
     schemeName: string;
     bg: string;
@@ -48,81 +75,121 @@ export interface Colors extends BaseColors {
     infoBarely: string;
     infoLight: string;
     infoDark: string;
+
+    /** Panel / card background, one step off the page background. */
+    surface: string;
+    /** A second elevation step - menus, popovers, modals. */
+    surfaceAlt: string;
+    /** Hover/stripe wash. */
+    surfaceSubtle: string;
+    /** Default hairline. Low contrast by design. */
+    border: string;
+    /** Emphasised border (focus, active). */
+    borderStrong: string;
+    /** Modal/overlay scrim. */
+    overlay: string;
 }
 
-const colors: BaseColors = {
-    bgDark: "rgba(22, 22, 33, 1)",
-    bgLight: "rgba(247, 247, 247, 1)",
-    success: "rgba(66, 199, 136, 1)",
-    success3Quarter: "rgba(66, 199, 136, 0.75)",
-    successHalf: "rgba(66, 199, 136, 0.5)",
-    successQuarter: "rgba(66, 199, 136, 0.25)",
-    successBarely: "rgba(66, 199, 136, 0.05)",
-    successLight: "rgba(95, 201, 151, 1)",
-    successDark: "rgba(26, 93, 49, 1)",
-    fail: "rgba(227, 14, 42, 1)",
-    fail3Quarter: "rgba(227, 14, 42, 0.75)",
-    failHalf: "rgba(227, 14, 42, 0.5)",
-    failQuarter: "rgba(227, 14, 42, 0.25)",
-    failBarely: "rgba(227, 14, 42, 0.05)",
-    failLight: "rgba(222, 84, 102, 1)",
-    failDark: "rgba(93, 26, 26, 1)",
-    warning: "rgba(207, 118, 23, 1)",
-    warning3Quarter: "rgba(207, 118, 23, 0.75)",
-    warningHalf: "rgba(207, 118, 23, 0.5)",
-    warningQuarter: "rgba(207, 118, 23, 0.25)",
-    warningBarely: "rgba(207, 118, 23, 0.05)",
-    warningLight: "rgba(224, 163, 96, 1)",
-    warningDark: "rgba(93, 66, 26, 1)",
+/** Corner radii. Nothing in the app should hard-code `borderRadius={0}` any more. */
+export const RADIUS = {
+    sm: '4px',
+    md: '6px',
+    lg: '10px',
+    xl: '14px',
+    full: '9999px',
+} as const;
+
+/** Muted semantic colors, shared across both color modes. */
+const SEMANTIC: Record<'success' | 'fail' | 'warning', RGB> = {
+    success: [72, 170, 125],
+    fail: [201, 85, 92],
+    warning: [199, 141, 74],
 };
 
-// Selectable accent colors, expressed as plain RGB so both color-mode
-// branches can build the same *kind* of value (rgba literals) instead of
-// dark building Chakra scale-token strings ("yellow.400") while light used
-// hard-coded rgba - see PLAN.md Phase 1 step 2. Keys are what gets persisted
-// and shown as the accent picker.
-export const ACCENT_PALETTE: Record<string, [number, number, number]> = {
-    yellow: [214, 158, 46],
-    orange: [221, 107, 32],
-    purple: [128, 90, 213],
-    blue: [66, 153, 225],
-    teal: [56, 178, 172],
-    green: [72, 187, 120],
-    pink: [213, 63, 140],
-    red: [229, 62, 62],
-    cyan: [14, 165, 233],
-};
-const DEFAULT_ACCENT = "yellow";
-
-const mix = (c: [number, number, number], target: [number, number, number], amount: number): [number, number, number] => [
-    Math.round(c[0] + (target[0] - c[0]) * amount),
-    Math.round(c[1] + (target[1] - c[1]) * amount),
-    Math.round(c[2] + (target[2] - c[2]) * amount),
-];
-const rgba = (c: [number, number, number], a: number) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a})`;
-
-const buildInfoVariants = (accentName: string) => {
-    const base = ACCENT_PALETTE[accentName] || ACCENT_PALETTE[DEFAULT_ACCENT];
-    const lightened = mix(base, [255, 255, 255], 0.35);
-    const darkened = mix(base, [0, 0, 0], 0.35);
+const semanticVariants = (name: 'success' | 'fail' | 'warning', dark: boolean) => {
+    const base = SEMANTIC[name];
     return {
-        info: rgba(base, 1),
-        info3Quarter: rgba(base, 0.75),
-        infoHalf: rgba(base, 0.5),
-        infoQuarter: rgba(base, 0.25),
-        infoBarely: rgba(base, 0.08),
-        infoLight: rgba(lightened, 1),
-        infoDark: rgba(darkened, 1),
+        [name]: rgba(base, 1),
+        [`${name}3Quarter`]: rgba(base, 0.7),
+        [`${name}Half`]: rgba(base, 0.45),
+        [`${name}Quarter`]: rgba(base, 0.22),
+        [`${name}Barely`]: rgba(base, 0.08),
+        [`${name}Light`]: rgba(mix(base, WHITE, dark ? 0.3 : 0.15), 1),
+        [`${name}Dark`]: rgba(mix(base, BLACK, dark ? 0.45 : 0.25), 1),
     };
 };
 
-// --- Accent color state --------------------------------------------------
-// Accent color used to live on a module-level mutable object (`mainConfig`)
-// that `setMainInfoColor` mutated in place. Mutating it never triggered a
-// React re-render, so changing the accent visibly did nothing. It now lives
-// in real React state behind a context, provided once at the app root
-// (see AppearanceProvider / FastBoard.tsx) and persisted via
-// useKvStore('appearance') so it survives a reload.
+const buildSemantic = (dark: boolean): BaseColors => ({
+    bgDark: rgba(INK, 1),
+    bgLight: rgba(PAPER, 1),
+    ...semanticVariants('success', dark),
+    ...semanticVariants('fail', dark),
+    ...semanticVariants('warning', dark),
+} as BaseColors);
+
+/**
+ * Selectable accents. Each one drives the entire theme, not just controls -
+ * backgrounds and text are tinted toward the same hue.
+ */
+export const ACCENT_PALETTE: Record<string, RGB> = {
+    amber: [214, 158, 46],
+    orange: [214, 112, 58],
+    rose: [201, 94, 128],
+    violet: [140, 108, 214],
+    indigo: [98, 116, 214],
+    blue: [66, 146, 214],
+    cyan: [56, 162, 178],
+    teal: [56, 172, 152],
+    green: [96, 168, 96],
+    slate: [122, 132, 152],
+};
+const DEFAULT_ACCENT = 'teal';
+
+const buildTheme = (accentName: string, dark: boolean): Colors => {
+    const accent = ACCENT_PALETTE[accentName] || ACCENT_PALETTE[DEFAULT_ACCENT];
+
+    // Tint the neutrals toward the accent hue. The mix amounts are what keep
+    // this readable: heavy pull toward ink/paper, just enough accent to colour it.
+    const bg = dark ? mix(accent, INK, 0.94) : mix(accent, PAPER, 0.95);
+    const surface = dark ? mix(accent, INK, 0.88) : mix(accent, PAPER, 0.9);
+    const surfaceAlt = dark ? mix(accent, INK, 0.83) : mix(accent, PAPER, 0.97);
+    const fore = dark ? mix(accent, WHITE, 0.82) : mix(accent, INK, 0.84);
+
+    return {
+        ...buildSemantic(dark),
+        schemeName: accentName,
+
+        bg: rgba(bg, 1),
+        bg3Quarter: rgba(bg, 0.75),
+        bgHalf: rgba(bg, 0.55),
+        bgQuarter: rgba(bg, 0.3),
+
+        surface: rgba(surface, 1),
+        surfaceAlt: rgba(surfaceAlt, 1),
+        surfaceSubtle: rgba(accent, dark ? 0.06 : 0.05),
+        border: rgba(accent, dark ? 0.18 : 0.16),
+        borderStrong: rgba(accent, dark ? 0.42 : 0.38),
+        overlay: dark ? 'rgba(8, 9, 12, 0.6)' : 'rgba(30, 32, 40, 0.35)',
+
+        fore: rgba(fore, 1),
+        fore3Quarter: rgba(fore, 0.72),
+        foreHalf: rgba(fore, 0.52),
+        foreQuarter: rgba(fore, 0.26),
+        foreBarely: rgba(fore, 0.07),
+        foreLight: rgba(mix(fore, WHITE, dark ? 0.2 : 0.45), 1),
+        foreDark: rgba(mix(fore, BLACK, 0.4), 1),
+
+        info: rgba(accent, 1),
+        info3Quarter: rgba(accent, 0.7),
+        infoHalf: rgba(accent, 0.45),
+        infoQuarter: rgba(accent, 0.22),
+        infoBarely: rgba(accent, 0.08),
+        infoLight: rgba(mix(accent, WHITE, dark ? 0.32 : 0.18), 1),
+        infoDark: rgba(mix(accent, BLACK, dark ? 0.45 : 0.25), 1),
+    };
+};
+
+// --- Accent state ---------------------------------------------------------
 interface AccentColorContextValue {
     accentColor: string;
     setAccentColor: (color: string) => void;
@@ -133,17 +200,17 @@ export const AppearanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const { get, set } = useKvStore('appearance');
     const [accentColor, setAccentColorState] = React.useState<string>(() => {
         const stored = get('accentColor');
-        return (typeof stored === 'string' && ACCENT_PALETTE[stored]) ? stored : DEFAULT_ACCENT;
+        return typeof stored === 'string' && ACCENT_PALETTE[stored] ? stored : DEFAULT_ACCENT;
     });
 
     const setAccentColor = React.useCallback((color: string) => {
         const next = ACCENT_PALETTE[color] ? color : DEFAULT_ACCENT;
         setAccentColorState(next);
         set('accentColor', next);
-    }, [set]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const value = React.useMemo(() => ({ accentColor, setAccentColor }), [accentColor, setAccentColor]);
-
     return React.createElement(AccentColorContext.Provider, { value }, children);
 };
 
@@ -152,45 +219,10 @@ const useAppColors = (): [Colors, (c: string) => void] => {
     const accentCtx = React.useContext(AccentColorContext);
     const accentColor = accentCtx?.accentColor || DEFAULT_ACCENT;
     const setMainInfoColor = accentCtx?.setAccentColor || (() => {});
-    const infoVariants = buildInfoVariants(accentColor);
+    const dark = colorMode !== 'light';
 
-    if (colorMode === "light") {
-        let finalColors: Colors = {
-            ...colors,
-            schemeName: accentColor,
-            bg: "rgba(247, 247, 247, 1)",
-            bg3Quarter: "rgba(247, 247, 247, 0.9)",
-            bgHalf: "rgba(247, 247, 247, 0.5)",
-            bgQuarter: "rgba(247, 247, 247, 0.25)",
-            fore: "rgba(65, 61, 133, 1)",
-            fore3Quarter: "rgba(65, 61, 133, 0.75)",
-            foreHalf: "rgba(65, 61, 133, 0.5)",
-            foreQuarter: "rgba(65, 61, 133, 0.25)",
-            foreBarely: "rgba(65, 61, 133, 0.05)",
-            foreLight: "rgba(125, 121, 212, 1)",
-            foreDark: "rgba(35, 32, 79, 1)",
-            ...infoVariants,
-        };
-        return [finalColors, setMainInfoColor];
-    } else {
-        let finalColors: Colors = {
-            ...colors,
-            schemeName: accentColor,
-            bg: "rgba(31,41,54,1)",//22, 22, 33, 1)",
-            bg3Quarter: "rgba(22, 22, 33, 0.75)",
-            bgHalf: "rgba(22, 22, 33, 0.5)",
-            bgQuarter: "rgba(22, 22, 33, 0.25)",
-            fore: "rgba(255, 255, 252, 1)",
-            fore3Quarter: "rgba(255, 255, 252, 0.75)",
-            foreHalf: "rgba(255, 255, 252, 0.5)",
-            foreQuarter: "rgba(255, 255, 252, 0.25)",
-            foreBarely: "rgba(255, 255, 252, 0.05)",
-            foreLight: "rgba(245, 181, 98, 1)",
-            foreDark: "rgba(186, 117, 28, 1)",
-            ...infoVariants,
-        };
-        return [finalColors, setMainInfoColor];
-    }
+    const theme = React.useMemo(() => buildTheme(accentColor, dark), [accentColor, dark]);
+    return [theme, setMainInfoColor];
 };
 
 export default useAppColors;
