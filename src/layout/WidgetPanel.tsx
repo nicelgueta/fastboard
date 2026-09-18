@@ -1,11 +1,12 @@
 import React from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Center, Spinner } from '@chakra-ui/react';
 import { IDockviewPanelProps } from 'dockview-react';
 import useAppColors from '../hooks/useAppColors';
 import { stopPropagation } from '../components/common';
 import SettingsModal from '../modals/SettingsModal';
 import SaveAsModal from '../modals/SaveAsModal';
 import { usePanelContext } from './PanelContext';
+import WidgetErrorBoundary from './WidgetErrorBoundary';
 import { WidgetPanelParams, getDefaultSettings } from './types';
 
 // The content rendered inside a widget's dockview panel: the widget itself,
@@ -66,6 +67,10 @@ const WidgetPanel: React.FC<IDockviewPanelProps<WidgetPanelParams>> = (props) =>
                 helperText='Provide a name to save this widget settings'
             />
             {WidgetElement ? (
+                // Heavy widgets (ag-grid, Monaco, duckdb) are React.lazy in
+                // widgets/registry.ts, so every widget body needs a boundary.
+                <WidgetErrorBoundary name={name}>
+                <React.Suspense fallback={<Center h="100%" w="100%"><Spinner color={colors.info} /></Center>}>
                 <WidgetElement
                     wKey={wKey}
                     isStatic={!!props.api.group.locked}
@@ -73,6 +78,8 @@ const WidgetPanel: React.FC<IDockviewPanelProps<WidgetPanelParams>> = (props) =>
                     settingsIsOpen={settingsIsOpen}
                     {...currentSettings}
                 />
+                </React.Suspense>
+                </WidgetErrorBoundary>
             ) : null}
         </Box>
     );

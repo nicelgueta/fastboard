@@ -5,17 +5,8 @@ import 'dockview-react/dist/styles/dockview.css';
 import './index.scss'
 import './index.css';
 
-// widgets
-import TradingViewChart, { TradingViewChartConfig } from './example_widgets/tradingview';
-import { WidgetComponentMapping, WidgetConfig } from './interfaces';
-
-const widgetComponentMapping = {
-  tradingView: TradingViewChart,
-}
-
-const widgetConfig = [
-  TradingViewChartConfig,
-]
+// The app's built-in widget set lives in one place now - see widgets/registry.ts.
+import { widgetComponentMapping, widgetConfig } from './widgets/registry';
 
 
 const rootElement = document.getElementById('root');
@@ -24,8 +15,8 @@ if (rootElement) {
     <React.StrictMode>
       <FastBoard
         appName="TestApp"
-        widgetConfig={widgetConfig as WidgetConfig}
-        widgetComponentMapping={widgetComponentMapping as WidgetComponentMapping}
+        widgetConfig={widgetConfig}
+        widgetComponentMapping={widgetComponentMapping}
       />
     </React.StrictMode>
   );

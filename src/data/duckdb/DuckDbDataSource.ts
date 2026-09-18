@@ -1,7 +1,14 @@
 import { getDuckDb } from './runtime';
 import { describeTable, quoteIdent, sanitizeTableName } from './ingest';
 import { toSql } from '../expression';
+import * as arrow from 'apache-arrow';
+import { arrowSchemaToTableSchema } from '../decode';
 import type { DataSource, FieldDef, QueryRequest, QueryResult, TableSchema } from '../types';
+
+/** Serialize an Arrow table to IPC stream bytes - the DataSource wire format. */
+function arrowTableToIPC(table: arrow.Table): Uint8Array {
+  return arrow.tableToIPC(table, 'stream');
+}
 
 function requireKnownField(name: string, fields: FieldDef[]): FieldDef {
   const def = fields.find((f) => f.name === name);
@@ -79,10 +86,15 @@ export class DuckDbDataSource implements DataSource {
     try {
       const rowSql = `SELECT ${selectCols} FROM ${quoteIdent(this.tableName)} WHERE ${filterSql.sql}${orderClause} LIMIT ? OFFSET ?`;
       const rowStmt = await conn.prepare(rowSql);
-      let rows: Record<string, unknown>[];
+      let bytes: Uint8Array;
+      let resultSchema: TableSchema;
       try {
         const arrowTable = await rowStmt.query(...filterSql.params, req.limit, req.offset);
-        rows = arrowTable.toArray().map((r) => r.toJSON() as Record<string, unknown>);
+        // Hand back Arrow IPC rather than JS rows: this is the transport
+        // boundary, and a remote DataSource would put the same bytes on the
+        // wire. Callers decode via src/data/decode.ts.
+        bytes = arrowTableToIPC(arrowTable);
+        resultSchema = arrowSchemaToTableSchema(arrowTable, this.tableName);
       } finally {
         await rowStmt.close();
       }
@@ -98,7 +110,7 @@ export class DuckDbDataSource implements DataSource {
         await countStmt.close();
       }
 
-      return { rows, totalRows };
+      return { format: 'arrow-ipc', bytes, totalRows, schema: resultSchema };
     } finally {
       await conn.close();
     }

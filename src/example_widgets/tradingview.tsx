@@ -22,7 +22,7 @@ import { useColorMode } from '@chakra-ui/color-mode';
 import { Box } from '@chakra-ui/layout';
 import { stopPropagation } from '../components/common';
 import { DefaultLayout } from '../layout';
-import { WidgetElementProps } from '../interfaces';
+import { WidgetElementProps, BaseWidgetDict } from '../interfaces';
 
 interface TradingViewChartProps extends WidgetElementProps {
     hiddenSideBar: boolean;
@@ -66,7 +66,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
 export default TradingViewChart;
 
-export const TradingViewChartConfig = {
+export const TradingViewChartConfig: BaseWidgetDict = {
     type: 'tradingView',
     disabled: false,
     name: 'TradingView Chart',

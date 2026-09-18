@@ -52,15 +52,15 @@ export const useWidgetExports = <T = WidgetExports>(wKey: string | undefined): T
  * closed widget never leaves a stale entry for useWidgetsByType/useWidgetExports
  * consumers to pick up.
  */
-export const usePublishExports = (
+export const usePublishExports = <T extends object>(
     wKey: string,
-    exportsObj: WidgetExports,
+    exportsObj: T,
     deps: DependencyList
 ): void => {
     const publish = useWidgetStore((s) => s.publish);
     const unpublish = useWidgetStore((s) => s.unpublish);
     useEffect(() => {
-        publish(wKey, exportsObj);
+        publish(wKey, exportsObj as unknown as WidgetExports);
         return () => unpublish(wKey);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [wKey, publish, unpublish, ...deps]);
