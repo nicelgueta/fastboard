@@ -1,5 +1,23 @@
 import React from 'react';
-import TradingViewWidget, { Themes, IntervalTypes, BarStyles } from 'react-tradingview-widget';
+import * as TradingViewWidgetModule from 'react-tradingview-widget';
+
+// react-tradingview-widget is a webpack UMD bundle with no `main` field, whose
+// entry does `module.exports = require('./dist/index')`. Vite prebundles that to
+// a single `export default <module.exports>`, so the namespace import nests two
+// levels deep: ns.default is the CJS exports *object*, and ns.default.default is
+// the actual component. Rendering the object is what threw "Element type is
+// invalid ... got: object". The named exports (Themes/BarStyles/...) live on that
+// same exports object, so take them from there too rather than importing them
+// separately - the prebundled module has no named exports to import.
+const tvNamespace = TradingViewWidgetModule as any;
+const tvExports: any =
+    tvNamespace.default && typeof tvNamespace.default === 'object'
+        ? tvNamespace.default
+        : tvNamespace;
+const TradingViewWidget: React.ComponentType<any> =
+    typeof tvExports === 'function' ? tvExports : tvExports.default;
+const { Themes, IntervalTypes, BarStyles } = tvExports;
+
 import { useColorMode } from '@chakra-ui/color-mode';
 import { Box } from '@chakra-ui/layout';
 import { stopPropagation } from '../components/common';
@@ -10,8 +28,10 @@ interface TradingViewChartProps extends WidgetElementProps {
     hiddenSideBar: boolean;
     hiddenTopBar: boolean;
     hiddenLegend: boolean;
-    chartInterval: IntervalTypes;
-    barType: keyof typeof BarStyles;
+    // These were typed off the package's enums, but the package ships no type
+    // declarations, so those imports are `any` at the type level anyway.
+    chartInterval: string;
+    barType: string;
     market: string;
 }
 

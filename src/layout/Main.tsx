@@ -27,13 +27,12 @@ import {
     BaseWidgetDict,
     WidgetDict,
     WidgetComponentMapping,
-    WidgetConfig,
-    WidgetState
+    WidgetConfig
 } from '../interfaces';
 import useUserAlert from '../hooks/useUserAlert';
 import useKvStore from '../hooks/useKvStore';
-import { AllWidgetStates } from '../reducers/recoilStates';
-import { useRecoilState } from 'recoil';
+import { useWidgetStore, WidgetRecord } from '../store/widgetStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface DashboardContainerProps {
     appName: string;
@@ -56,9 +55,31 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
     appName, widgetConfig, widgetComponentMapping
 }: DashboardContainerProps) => {
     const [ menuOpen, setMenuOpen ] = useState<boolean>(false);
-    const [ widgets, setWidgets ] = useState<WidgetDict[]>([]);
     const [ dockviewApi, setDockviewApi ] = useState<DockviewApi>();
-    const [ allWidgetStates, setWidgetStates ] = useRecoilState(AllWidgetStates);
+    // Widget registry lives in the zustand store (the widget-linking framework -
+    // see src/store/widgetStore.ts) rather than local state, so it is the single
+    // source of truth shared with other widgets/panels. `widgets` below is the
+    // fuller WidgetDict[] shape (static config + current settings) derived from
+    // it, kept for board save/load and maxNo checks - unchanged from before.
+    const storeWidgets = useWidgetStore(useShallow((s) => s.widgets));
+    const register = useWidgetStore((s) => s.register);
+    const unregister = useWidgetStore((s) => s.unregister);
+    const renameWidget = useWidgetStore((s) => s.rename);
+    const setWidgetSettings = useWidgetStore((s) => s.setSettings);
+    const loadWidgetsIntoStore = useWidgetStore((s) => s.loadWidgets);
+    const resetWidgetStore = useWidgetStore((s) => s.resetAll);
+    const widgets: WidgetDict[] = React.useMemo(() => Object.values(storeWidgets).map((w) => {
+        const cfg = widgetConfig.find((c) => c.type === w.type);
+        const typeNumber = Number(w.wKey.slice(w.type.length + 1)) || 0;
+        return {
+            ...(cfg as BaseWidgetDict),
+            type: w.type,
+            name: w.name,
+            key: w.wKey,
+            typeNumber,
+            currentSettings: w.settings,
+        } as WidgetDict;
+    }), [storeWidgets, widgetConfig]);
     const [ currentBoardKey, setCurrentBoardKey] = useState<string>("");
     const { get: getSavedBoard } = useKvStore('allBoards');
     const [ colors ] = useAppColors();
@@ -78,12 +99,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
     const userAlert  = useUserAlert()
 
     const removeWidgetBookkeeping = (key: string) => {
-        setWidgets(prev => prev.filter(widget => widget.key !== key));
-        setWidgetStates(prev => {
-            const newWidgetStates = { ...prev };
-            delete newWidgetStates[key];
-            return newWidgetStates;
-        });
+        unregister(key);
     };
 
     const onReady = (event: DockviewReadyEvent) => {
@@ -103,10 +119,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                     const nextName = window.prompt('Rename widget', panel.title || '');
                     if (nextName && nextName.trim()) {
                         panel.api.setTitle(nextName.trim());
-                        setWidgetStates(prev => ({
-                            ...prev,
-                            [panel.id]: { ...prev[panel.id], name: nextName.trim() }
-                        }));
+                        renameWidget(panel.id, nextName.trim());
                     }
                 },
             },
@@ -138,23 +151,28 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             return;
         }
         dockviewApi.fromJSON(boardObj.layout);
-        setWidgets(boardObj.widgets);
+        // Rebuild the store's registry from the persisted WidgetDict[] (backward
+        // compatible with boards saved before this phase - that shape hasn't changed).
+        const widgetsByKey: Record<string, WidgetRecord> = {};
+        (boardObj.widgets || []).forEach((w) => {
+            widgetsByKey[w.key] = {
+                wKey: w.key,
+                type: w.type,
+                name: w.name,
+                settings: w.currentSettings || {},
+            };
+        });
+        loadWidgetsIntoStore(widgetsByKey, boardObj.widgetStates || {});
         setCurrentBoardKey(boardKey);
-        setWidgetStates(boardObj.widgetStates);
     }
 
     const resetBoard = () => {
         dockviewApi?.clear();
-        setWidgets([]);
+        resetWidgetStore();
     }
 
     const saveWidgetSettings = (key: string, settings: Record<string, any>) => {
-        setWidgets(prev => prev.map(widget => {
-            if (widget.key === key) {
-                return { ...widget, currentSettings: settings };
-            }
-            return widget;
-        }));
+        setWidgetSettings(key, settings);
     }
 
     const addWidget = (type: string, savedSettings?: Record<string, any>) => {
@@ -183,10 +201,6 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
 
         const widgeTypeNumber = new Date().getTime();
         const key = `${type}-${widgeTypeNumber}`;
-        const newWidgeDict: WidgetDict = { ...widgetDict, typeNumber: widgeTypeNumber, key: key };
-        if (savedSettings) {
-            newWidgeDict.currentSettings = savedSettings;
-        }
 
         const params: WidgetPanelParams = {
             widgetType: type,
@@ -203,11 +217,12 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             initialHeight: widgetDict.defaultLayout.initialHeight,
         });
 
-        setWidgets(prev => [...prev, newWidgeDict]);
-        setWidgetStates(prev => ({
-            ...prev,
-            [key]: {} as WidgetState
-        }));
+        register({
+            wKey: key,
+            type,
+            name: widgetDict.name,
+            settings: savedSettings || {},
+        });
     };
 
     const getCurrentLayout = () => dockviewApi?.toJSON();
@@ -223,6 +238,10 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                     borderWidth: 1,
                     zIndex: 4,
                     flexShrink: 0,
+                    // Definite height: the header's children size themselves
+                    // with h="100%", which resolves to `auto` against an
+                    // auto-height parent and let the bar grow to ~116px.
+                    height: 48,
                 }}
             >
                 <NavHeader

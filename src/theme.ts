@@ -10,13 +10,10 @@ const theme = extendTheme({ config });
 
 export default theme;
 
-// FastBoard is dark-only: there's no in-app toggle, and system preference /
-// a stale localStorage value (e.g. from before this app went dark-only)
-// should never be able to switch it to light. This manager always reports
-// "dark" and ignores writes, so ChakraProvider can't be steered away from it.
-export const forcedDarkColorModeManager: ReturnType<typeof createLocalStorageManager> = {
-    type: 'localStorage',
-    ssr: false,
-    get: () => 'dark',
-    set: () => {},
-};
+// Real light/dark toggle, persisted to localStorage under its own key so it
+// can't collide with anything else. A fresh profile (no stored value yet)
+// still resolves to 'dark' via ThemeConfig.initialColorMode above, and
+// ColorModeScript (see FastBoard.tsx) must be given the same key + initial
+// value so there is no flash of the wrong theme on load.
+export const colorModeManager: ReturnType<typeof createLocalStorageManager> =
+    createLocalStorageManager('fastboard-color-mode');
