@@ -3,16 +3,16 @@ import { useAppSettings } from '../store/appSettings';
 /**
  * Catalogue of data sources the table widget can offer to bind against.
  *
- * duckdb (see DuckDbDataSource) is the only kind with a working DataSource
- * implementation today - the others are here so a host app can describe a
- * Snowflake / ClickHouse / REST warehouse in `/app/table/dataSources` ahead
- * of this app having a client for it. The table widget shows those sources
- * and their configured tables, but binding one surfaces a "not supported
- * yet" message rather than pretending to query it - see TableWidget's
- * bindTable. Add a kind here, plus a DataSource implementation, plus a case
- * in TableWidget's bindTable, to actually wire one up.
+ * duckdb (see DuckDbDataSource) and qpl (QplDataSource) are the kinds with a
+ * working DataSource implementation today - the others are here so a host app
+ * can describe a Snowflake / ClickHouse / REST warehouse in
+ * `/app/table/dataSources` ahead of this app having a client for it. The table
+ * widget shows those sources and their configured tables, but binding one
+ * surfaces a "not supported yet" message rather than pretending to query it -
+ * see src/data/engines.ts. Add a kind here, plus a DataSource implementation,
+ * plus an entry in engines.ts, to actually wire one up.
  */
-export type DataSourceKind = 'duckdb' | 'snowflake' | 'clickhouse' | 'rest' | (string & {});
+export type DataSourceKind = 'duckdb' | 'qpl' | 'snowflake' | 'clickhouse' | 'rest' | (string & {});
 
 export interface DataSourceTableConfig {
     name: string;
@@ -45,6 +45,12 @@ export const DEFAULT_DATA_SOURCES_CONFIG: DataSourcesConfig = {
             label: 'DuckDB (in-browser)',
             tables: [],
         },
+        {
+            id: 'qpl',
+            kind: 'qpl',
+            label: 'qpl (in-browser)',
+            tables: [],
+        },
     ],
 };
 
@@ -72,8 +78,8 @@ async function fetchDataSourcesConfig(): Promise<DataSourcesConfig> {
 let cached: Promise<DataSourcesConfig> | null = null;
 
 /**
- * Always resolves - falls back to DEFAULT_DATA_SOURCES_CONFIG (duckdb only)
- * when the endpoint isn't implemented, is unreachable, or returns something
+ * Always resolves - falls back to DEFAULT_DATA_SOURCES_CONFIG (the in-browser
+ * engines) when the endpoint isn't implemented, is unreachable, or returns something
  * that doesn't match the expected shape. Same degrade-gracefully approach as
  * src/store/storage.ts's remote adapter.
  */

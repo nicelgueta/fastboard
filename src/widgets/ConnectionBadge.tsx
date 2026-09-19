@@ -18,9 +18,10 @@ const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ connected, label }) =
     const textColor = connected ? colors.success : colors.foreHalf;
 
     return (
-        <HStack spacing={1.5}>
+        // minW 0 + truncation: in a narrow toolbar the status gives way rather than overflowing
+        <HStack spacing={1.5} minW={0}>
             <Box w="8px" h="8px" borderRadius="full" bg={dotColor} flexShrink={0} />
-            <Text fontSize="xs" color={textColor}>
+            <Text fontSize="xs" color={textColor} noOfLines={1}>
                 {connected ? `Connected${label ? ` to ${label}` : ''}` : 'Disconnected'}
             </Text>
         </HStack>

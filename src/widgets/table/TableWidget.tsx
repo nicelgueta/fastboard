@@ -23,8 +23,10 @@ import { WidgetElementProps } from '../../interfaces';
 import type { TableWidgetExports } from '../types';
 import type { DataSource, Expression, FieldDef, FieldType, TableSchema } from '../../data/types';
 import { resultToRows } from '../../data/decode';
-import { DuckDbDataSource } from '../../data/duckdb/DuckDbDataSource';
-import { registerCsv, registerJson, registerParquet, sanitizeTableName } from '../../data/duckdb/ingest';
+import { getEngine, DEFAULT_ENGINE_KIND } from '../../data/engines';
+import { tryBind } from './tryBind';
+import { lastRowFor } from './paging';
+import { sanitizeTableName } from '../../data/tableName';
 import { toHumanString } from '../../data/expression';
 import FBButton from '../../components/primitive/Button';
 import FBInput from '../../components/primitive/Input';
@@ -48,6 +50,8 @@ interface TableWidgetProps extends WidgetElementProps {
 
 interface TablePersistedState {
     tableName?: string;
+    /** Which engine tableName lives in (a DataSourceKind). Absent on boards saved before qpl existed: duckdb. */
+    sourceKind?: string;
     filter?: Expression;
     pageSize?: number;
     // Set when the SQL editor (Phase 7) pushed a result via setResult -
@@ -126,33 +130,52 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
     React.useEffect(() => { sourceRef.current = source; }, [source]);
     React.useEffect(() => { filterRef.current = filter; }, [filter]);
 
-    // Bind (or rebind) the DuckDbDataSource whenever the persisted table
-    // name changes - including on mount when restoring from a saved board.
-    const boundTableName = state.tableName ?? (sourceTableName || undefined);
+    // Bind (or rebind) the DataSource whenever the persisted table name or
+    // engine changes - including on mount when restoring from a saved board.
+    //
+    // A board saves which table a widget was bound to, not the table: both
+    // engines are in-memory, so after a reload the table is gone. Any failure to
+    // bind therefore resets the widget to its initial state (the upload prompt)
+    // rather than leaving it pointing at nothing.
+    const [settingTableFailed, setSettingTableFailed] = React.useState(false);
+    const boundTableName = state.tableName ?? (settingTableFailed ? undefined : (sourceTableName || undefined));
+    const boundKind = state.sourceKind ?? DEFAULT_ENGINE_KIND;
+    const unbind = (tableName: string, kind: string, why: string) => {
+        const label = dsConfig.dataSources.find((d) => d.kind === kind)?.label ?? kind;
+        setSource(null);
+        setSchema(undefined);
+        setRows([]);
+        setTotalRows(0);
+        // the widget's "table name" setting is only a default: don't retry it either
+        setSettingTableFailed(true);
+        setState({ tableName: undefined, sourceKind: undefined, filter: undefined });
+        // offer the engine it was on, so re-uploading goes to the same place
+        const sourceId = dsConfig.dataSources.find((d) => d.kind === kind)?.id;
+        if (sourceId) setSelectedSourceId(sourceId);
+        alert(
+            'Table not available',
+            'warning',
+            `"${tableName}" isn't loaded in ${label} (boards save which table a widget uses, not its data), so the widget was reset. Upload the file again. (${why})`,
+        );
+    };
     React.useEffect(() => {
         if (!boundTableName || pushedMode) return;
         let cancelled = false;
         setLoading(true);
-        try {
-            const ds = new DuckDbDataSource(boundTableName);
-            ds.getSchema()
-                .then((sch) => {
-                    if (cancelled) return;
-                    setSource(ds);
-                    setSchema(sch);
-                })
-                .catch((e) => {
-                    if (cancelled) return;
-                    alert('Failed to bind table', 'fail', e instanceof Error ? e.message : String(e));
-                })
-                .finally(() => { if (!cancelled) setLoading(false); });
-        } catch (e) {
-            setLoading(false);
-            alert('Invalid table name', 'fail', e instanceof Error ? e.message : String(e));
-        }
+        tryBind(boundKind, boundTableName)
+            .then((r) => {
+                if (cancelled) return;
+                if (r.ok) {
+                    setSource(r.source);
+                    setSchema(r.schema);
+                } else {
+                    unbind(boundTableName, boundKind, r.why);
+                }
+            })
+            .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [boundTableName]);
+    }, [boundTableName, boundKind]);
 
     // Stable IDatasource for ag-grid's Infinite Row Model: getRows' startRow/
     // endRow map straight onto DataSource.query's offset/limit, and its
@@ -183,8 +206,8 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                     const decoded = await resultToRows(result);
                     setTotalRows(result.totalRows);
                     if (result.schema) setSchema(result.schema);
-                    const lastRow = result.totalRows <= params.endRow ? result.totalRows : undefined;
-                    params.successCallback(decoded, lastRow);
+                    // the total goes with every block, so the pager knows the page count up front
+                    params.successCallback(decoded, lastRowFor(result.totalRows));
                 })
                 .catch((e) => {
                     alert('Query failed', 'fail', e instanceof Error ? e.message : String(e));
@@ -241,6 +264,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
 
     const tableExports: TableWidgetExports = {
         tableName: source?.sqlName,
+        engine: source ? boundKind : undefined,
         schema,
         source: source ?? undefined,
         applyFilter,
@@ -253,19 +277,21 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
     usePublishExports(
         wKey,
         tableExports,
-        [wKey, source?.id ?? '', schema?.name ?? '', applyFilter, setResult, releaseResult],
+        [wKey, source?.id ?? '', boundKind, schema?.name ?? '', applyFilter, setResult, releaseResult],
     );
 
     const hasConfiguredTables = (selectedSource?.tables.length ?? 0) > 0;
+    // undefined for kinds this app has no client for yet (snowflake, rest, ...)
+    const selectedEngine = getEngine(selectedSource?.kind);
 
     const bindTable = () => {
         const name = (hasConfiguredTables ? selectedTable : tableNameInput).trim();
         if (!name) return;
-        if (!selectedSource || selectedSource.kind !== 'duckdb') {
+        if (!selectedSource || !selectedEngine) {
             alert(
                 'Not supported yet',
                 'warning',
-                `${selectedSource?.label ?? 'This data source'} isn't wired up to the table widget yet - only DuckDB is currently supported.`,
+                `${selectedSource?.label ?? 'This data source'} isn't wired up to the table widget yet - only DuckDB and qpl are currently supported.`,
             );
             return;
         }
@@ -276,24 +302,28 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
             return;
         }
         setPushedMode(false);
-        setState({ tableName: name, filter: undefined });
+        setState({ tableName: name, sourceKind: selectedEngine.kind, filter: undefined });
         setTableNameInput('');
         setSelectedTable('');
     };
 
+    const uploadExtensionsLabel = (selectedEngine?.uploadExtensions ?? []).map((e) => e.toUpperCase()).join(' / ');
+
     const handleFile = async (file: File) => {
-        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (!selectedEngine) return;
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
         const rawName = file.name.replace(/\.[^.]+$/, '');
         const safeName = rawName.replace(/[^A-Za-z0-9_]/g, '_').replace(/^([0-9])/, '_$1') || 'uploaded_table';
         setLoading(true);
         try {
-            let sch: TableSchema;
-            if (ext === 'csv') sch = await registerCsv(file, safeName);
-            else if (ext === 'json') sch = await registerJson(file, safeName);
-            else if (ext === 'parquet') sch = await registerParquet(file, safeName);
-            else throw new Error(`Unsupported file type ".${ext}" - use CSV, JSON or Parquet.`);
+            if (!selectedEngine.uploadExtensions.includes(ext)) {
+                throw new Error(
+                    `Unsupported file type ".${ext}" for ${selectedSource?.label ?? 'this data source'} - use ${uploadExtensionsLabel}.`,
+                );
+            }
+            const sch = await selectedEngine.ingestFile(file, ext, safeName);
             setPushedMode(false);
-            setState({ tableName: sch.name, filter: undefined });
+            setState({ tableName: sch.name, sourceKind: selectedEngine.kind, filter: undefined });
             alert('Loaded', 'success', `${sch.name}: ${sch.rowCount ?? '?'} rows`);
         } catch (e) {
             alert('Upload failed', 'fail', e instanceof Error ? e.message : String(e));
@@ -363,7 +393,10 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
         <Box h="100%" display="flex" flexDirection="column" padding={2} onMouseDown={stopPropagation} onTouchStart={stopPropagation}>
             {!boundTableName && !pushedMode ? (
                 <Box borderWidth={1} borderColor={colors.foreQuarter} padding={4} marginBottom={2}>
-                    <Text marginBottom={2}>Bind a table from a data source, or upload a CSV / JSON / Parquet file into DuckDB.</Text>
+                    <Text marginBottom={2}>
+                        Bind a table from a data source
+                        {selectedEngine ? `, or upload a ${uploadExtensionsLabel} file into ${selectedSource?.label}` : ''}.
+                    </Text>
                     <HStack marginBottom={2}>
                         <FBSelect
                             typ="info"
@@ -398,7 +431,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                             Load
                         </FBButton>
                     </HStack>
-                    {selectedSourceId === 'duckdb' ? (
+                    {selectedEngine ? (
                         <>
                             <FBButton
                                 typ="success"
@@ -411,7 +444,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                             <ChakraFileInput
                                 ref={fileInputRef}
                                 type="file"
-                                accept=".csv,.json,.parquet"
+                                accept={selectedEngine.uploadExtensions.map((e) => `.${e}`).join(',')}
                                 display="none"
                                 onChange={(e) => {
                                     const f = e.target.files?.[0];
@@ -428,6 +461,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                 <HStack marginBottom={2} spacing={3} wrap="wrap">
                     <Text fontSize="sm" color={colors.foreHalf}>
                         {boundTableName ?? 'query result'}
+                        {boundTableName && boundKind !== DEFAULT_ENGINE_KIND ? ` (${boundKind})` : ''}
                     </Text>
                     <ConnectionBadge connected={!!linkedEditor} label={linkedEditor?.name} />
                     <FBButton
@@ -435,7 +469,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                         variant="outline"
                         size="sm"
                         onClick={() => setFilterOpen(true)}
-                        isDisabled={isStatic || !schema || pushedMode}
+                        isDisabled={isStatic || !schema || pushedMode || source?.supportsFilter === false}
                     >
                         Filter
                     </FBButton>

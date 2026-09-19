@@ -1,23 +1,11 @@
 import * as duckdb from '@duckdb/duckdb-wasm';
 import { getDuckDb } from './runtime';
+import { sanitizeTableName } from '../tableName';
 import type { FieldDef, FieldType, TableSchema } from '../types';
 
 export type IngestFormat = 'csv' | 'json' | 'parquet';
 
-const TABLE_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-/**
- * User-supplied table names reach raw SQL. Only allow identifier-safe names
- * and quote them everywhere they're embedded.
- */
-export function sanitizeTableName(name: string): string {
-  if (!TABLE_NAME_RE.test(name)) {
-    throw new Error(
-      `Invalid table name "${name}": must match ${TABLE_NAME_RE} (letters, digits, underscore; cannot start with a digit).`,
-    );
-  }
-  return name;
-}
+export { sanitizeTableName };
 
 export function quoteIdent(name: string): string {
   return `"${name.replace(/"/g, '""')}"`;

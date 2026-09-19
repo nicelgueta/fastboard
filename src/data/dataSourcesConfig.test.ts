@@ -6,12 +6,11 @@ describe('getDataSourcesConfig', () => {
         vi.unstubAllGlobals();
     });
 
-    it('falls back to the default (duckdb only) when the endpoint is not implemented', async () => {
+    it('falls back to the default (the in-browser engines) when the endpoint is not implemented', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404, statusText: 'Not Found' }));
         const config = await getDataSourcesConfig(true);
         expect(config).toEqual(DEFAULT_DATA_SOURCES_CONFIG);
-        expect(config.dataSources).toHaveLength(1);
-        expect(config.dataSources[0].kind).toBe('duckdb');
+        expect(config.dataSources.map((d) => d.kind)).toEqual(['duckdb', 'qpl']);
     });
 
     it('falls back to the default when fetch throws (network error / offline)', async () => {

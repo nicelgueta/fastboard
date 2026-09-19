@@ -1,10 +1,14 @@
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
   // duckdb-wasm ships pre-bundled ESM workers; excluding it stops esbuild
-  // from mangling the worker entry points during dep optimization.
-  optimizeDeps: { exclude: ['@duckdb/duckdb-wasm'] },
+  // from mangling the worker entry points during dep optimization. qpl's wasm
+  // bundle is loaded by explicit URL (src/data/qpl/runtime.ts), which the
+  // optimizer would likewise break.
+  optimizeDeps: { exclude: ['@duckdb/duckdb-wasm', 'qpl'] },
+  // node_modules/qpl is a link to the qpl repo's wasm build, outside this root.
+  server: { fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../qpl/tools/wasm/pkg'] } },
   worker: { format: 'es' },
 });

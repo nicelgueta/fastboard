@@ -124,4 +124,10 @@ export interface DataSource {
   query(req: QueryRequest): Promise<QueryResult>;
   /** Optional: expose the source under a name the SQL editor can query. */
   sqlName?: string;
+  /**
+   * Whether `query` honours `QueryRequest.filter`. Omitted means yes. A source
+   * that can't (the qpl engine, which has no Expression compiler) sets false and
+   * the table widget turns its Filter button off rather than silently ignoring it.
+   */
+  supportsFilter?: boolean;
 }

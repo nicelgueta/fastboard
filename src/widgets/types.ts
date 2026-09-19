@@ -1,4 +1,5 @@
 import type { Expression, TableSchema, DataSource } from '../data/types';
+import type { DataSourceKind } from '../data/dataSourcesConfig';
 
 /**
  * Cross-widget contracts.
@@ -23,6 +24,12 @@ export const WIDGET_TYPE = {
 export interface TableWidgetExports {
   /** duckdb table name backing this widget, if one is bound yet. */
   tableName?: string;
+  /**
+   * The engine the bound table lives in ('duckdb', 'qpl'). The SQL editor runs
+   * its text on this engine, in that engine's language, when linked. Absent
+   * until a table is bound.
+   */
+  engine?: DataSourceKind;
   /** Current schema, or undefined before a source is bound. */
   schema?: TableSchema;
   /** The bound source, for callers that want to query it directly. */
