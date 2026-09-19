@@ -919,6 +919,14 @@ no-WebGL paths both degrade gracefully. "Open dashboard" routes to a working boa
   kind, cursor repulsion with velocity + damping + a spring home, no React state per frame, pause on a
   hidden tab, still frame under `prefers-reduced-motion`, CSS gradient when WebGL is missing or the chunk
   fails. The pointer is read from a window listener.
+- The shapes are finance/network motifs rather than the plan's generic polyhedra: scales of justice,
+  terminals, Bitcoin coins (the raised B on both faces), candlesticks, bar charts, trend arrows and
+  oil barrels (compound geometry merged per kind, so still one draw call each), coloured by meaning (Bitcoin
+  orange, candles green/red, barrels red/blue, scales and terminals accent). Thin links join each
+  shape to up to 3 near neighbours, like a live network.
+- Shapes bounce off each other (`collide`, equal density, resolved in *screen* space so depth does not hide
+  an overlap) and start from relaxed, non-overlapping rest positions (`relaxHomes`); they are scaled down
+  when they would crowd the view (26% coverage cap), e.g. on a phone.
 - `physics.ts` holds the motion as pure functions (unit tested); `shapeField.test.ts` runs the real scene
   code against a stubbed renderer and asserts on the actual instance matrices.
 - Routing is wouter 3: `/` landing, `/board` lazy board, anything else redirects to `/`. Providers moved up

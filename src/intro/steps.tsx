@@ -52,7 +52,8 @@ export const INTRO_STEPS: IntroStep[] = [
         <Text color={colors.fore}>
           Tools that already have their maximum number of instances on the board are greyed out in
           the list, so you don't hit an error after the fact. Configurations you saved yourself
-          appear in the same menu under <Code>Saved</Code>.
+          live in the <Code>Add saved widget</Code> menu (or press <Kbd>2</Kbd>), listed by name
+          with the tool they configure underneath.
         </Text>
         <Text color={colors.fore}>
           When the board already has something on it, you are asked where the new tool should go:
@@ -70,7 +71,7 @@ export const INTRO_STEPS: IntroStep[] = [
           board, or onto the middle of a panel to dock alongside its other tabs. Drag a tab out
           into empty space to float it above the board. Double-click a tab's title to rename it.
         </Text>
-        <Text color={colors.fore}>Right-click any tab for its actions menu:</Text>
+        <Text color={colors.fore}>Right-click any tab, or click the menu icon beside its name, for its actions menu:</Text>
         <UnorderedList pl={4} color={colors.fore} spacing={1}>
           <ListItem>Rename</ListItem>
           <ListItem>Settings</ListItem>
@@ -99,8 +100,8 @@ export const INTRO_STEPS: IntroStep[] = [
         </Text>
         <Text color={colors.fore}>
           Once a widget is set up the way you want it, right-click it and choose{' '}
-          <Code>Save As</Code> to store that configuration for reuse. It then shows up under{' '}
-          <Code>Saved</Code> in the <Code>Add to board</Code> menu, ready to drop onto any board.
+          <Code>Save As</Code> to store that configuration for reuse. It then shows up in the{' '}
+          <Code>Add saved widget</Code> menu, ready to drop onto any board.
         </Text>
         <Text color={colors.fore}>
           The header also holds the accent colour, the light/dark switch and an app{' '}

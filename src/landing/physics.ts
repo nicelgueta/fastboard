@@ -115,3 +115,119 @@ export function makeRng(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/**
+ * A shape as the collision pass sees it. `x`/`y` are world coordinates on the
+ * shape's own depth plane; collisions are resolved in *screen* space, where a
+ * shape at depth z is scaled by `k = camZ / (camZ - z)`, because "overlap" only
+ * means something for what is drawn on top of what. `r` is the on-screen
+ * (projected) radius, already including `k`.
+ */
+export interface CollisionBody extends Body {
+  r: number;
+  k: number;
+}
+
+/**
+ * Push overlapping shapes apart and bounce them off each other (equal density,
+ * so mass goes with r^2: a big shape shoves a small one more than the reverse).
+ * `restitution` 1 is a perfectly elastic bounce, 0 just stops them sliding into
+ * each other. Only approaching pairs get an impulse, so resting contact does not
+ * gain energy. Call once or twice per frame after integrating.
+ */
+export function collide(bodies: CollisionBody[], restitution = 0.9): void {
+  for (let i = 0; i < bodies.length; i++) {
+    const a = bodies[i];
+    for (let j = i + 1; j < bodies.length; j++) {
+      const b = bodies[j];
+      const dx = b.x * b.k - a.x * a.k;
+      const dy = b.y * b.k - a.y * a.k;
+      const min = a.r + b.r;
+      // cheap reject before the sqrt
+      if (Math.abs(dx) >= min || Math.abs(dy) >= min) continue;
+      const d = Math.hypot(dx, dy);
+      if (d >= min) continue;
+      // exactly coincident: no direction, so pick one
+      const nx = d > 1e-6 ? dx / d : 1;
+      const ny = d > 1e-6 ? dy / d : 0;
+      const ma = a.r * a.r;
+      const mb = b.r * b.r;
+      const total = ma + mb;
+
+      // separate along the normal, the lighter shape moving further
+      const overlap = min - d;
+      a.x -= (nx * overlap * (mb / total)) / a.k;
+      a.y -= (ny * overlap * (mb / total)) / a.k;
+      b.x += (nx * overlap * (ma / total)) / b.k;
+      b.y += (ny * overlap * (ma / total)) / b.k;
+
+      // bounce, in screen-space velocities
+      const avx = a.vx * a.k, avy = a.vy * a.k;
+      const bvx = b.vx * b.k, bvy = b.vy * b.k;
+      const approach = (bvx - avx) * nx + (bvy - avy) * ny;
+      if (approach < 0) {
+        const jImp = (-(1 + restitution) * approach) / (1 / ma + 1 / mb);
+        a.vx = (avx - (jImp / ma) * nx) / a.k;
+        a.vy = (avy - (jImp / ma) * ny) / a.k;
+        b.vx = (bvx + (jImp / mb) * nx) / b.k;
+        b.vy = (bvy + (jImp / mb) * ny) / b.k;
+      }
+    }
+  }
+}
+
+export interface HomePoint {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/**
+ * Nudge resting positions apart until no two circles overlap (with `slack` of
+ * extra clearance, as a fraction of the pair's combined radius, so drifting
+ * shapes do not collide constantly), keeping every point inside +-halfW/halfH
+ * scaled by `bound`. Mutates `pts` and returns whether it fully resolved. The
+ * springs pull shapes toward these homes, so overlapping homes would fight the
+ * collision pass forever.
+ */
+export function relaxHomes(
+  pts: HomePoint[],
+  halfW: number,
+  halfH: number,
+  bound = 1.05,
+  slack = 0.15,
+  iterations = 300,
+): boolean {
+  const bx = halfW * bound;
+  const by = halfH * bound;
+  for (let it = 0; it < iterations; it++) {
+    let moved = false;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const a = pts[i];
+        const b = pts[j];
+        const min = (a.r + b.r) * (1 + slack);
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        if (Math.abs(dx) >= min || Math.abs(dy) >= min) continue;
+        const d = Math.hypot(dx, dy);
+        // a sliver of overlap is settled: without a tolerance, float noise keeps this "moving" forever
+        if (d >= min - 1e-6) continue;
+        moved = true;
+        const nx = d > 1e-6 ? dx / d : 1;
+        const ny = d > 1e-6 ? dy / d : 0;
+        const push = (min - d) / 2;
+        a.x -= nx * push;
+        a.y -= ny * push;
+        b.x += nx * push;
+        b.y += ny * push;
+      }
+    }
+    for (const p of pts) {
+      p.x = Math.max(-bx, Math.min(bx, p.x));
+      p.y = Math.max(-by, Math.min(by, p.y));
+    }
+    if (!moved) return true;
+  }
+  return false;
+}

@@ -78,7 +78,9 @@ const ToolMenu: React.FC<ToolMenuProps> = ({
     if (!q) return sortedItems;
     return sortedItems.filter(
       (item) =>
-        item.label.toLowerCase().includes(q) || item.value.toLowerCase().includes(q)
+        item.label.toLowerCase().includes(q) ||
+        item.value.toLowerCase().includes(q) ||
+        !!item.description?.toLowerCase().includes(q)
     );
   }, [sortedItems, query]);
 

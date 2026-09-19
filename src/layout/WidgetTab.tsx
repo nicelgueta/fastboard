@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, HStack, Input, Text } from '@chakra-ui/react';
-import { MdClose } from 'react-icons/md';
+import { MdClose, MdMenu } from 'react-icons/md';
 import { IDockviewPanelHeaderProps } from 'dockview-react';
 import useAppColors from '../hooks/useAppColors';
 import { useWidgetStore } from '../store/widgetStore';
@@ -55,6 +55,22 @@ const WidgetTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
         setEditing(false);
     };
 
+    // dockview has no API to open a tab's context menu, only the tab's own
+    // `contextmenu` listener - so replay one from the button's corner. It
+    // bubbles up to the tab element, which shows the menu at those coordinates.
+    const openMenu = (e: React.MouseEvent<HTMLElement>) => {
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.dispatchEvent(new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            clientX: rect.left,
+            clientY: rect.bottom,
+        }));
+    };
+
+    const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
+
     return (
         <HStack
             spacing={1}
@@ -102,6 +118,23 @@ const WidgetTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
                     {title}
                 </Text>
             )}
+            <Box
+                as="span"
+                role="button"
+                aria-label={`menu-${title}`}
+                title="Widget menu"
+                display="flex"
+                alignItems="center"
+                color={colors.foreHalf}
+                borderRadius="sm"
+                cursor="pointer"
+                _hover={{ color: colors.fore, bg: colors.surfaceSubtle }}
+                onMouseDown={stopPropagation}
+                onPointerDown={stopPropagation}
+                onClick={openMenu}
+            >
+                <MdMenu size={13} />
+            </Box>
             <Box
                 as="span"
                 aria-label={`close-${title}`}

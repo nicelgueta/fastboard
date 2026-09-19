@@ -51,7 +51,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({
   const [saveAsOpen, setSaveAsOpen] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [allBoardKeys, setAllBoardKeys] = React.useState<string[]>([]);
-  const [savedToolKeys, setSavedToolKeys] = React.useState<string[]>([]);
+  const [savedWidgets, setSavedWidgets] = React.useState<{ key: string; type: string }[]>([]);
   const [, navigate] = useLocation();
   const { open: introOpen, setOpen: setIntroOpen, dismiss: dismissIntro } = useIntro(true);
 
@@ -64,7 +64,15 @@ const NavHeader: React.FC<NavHeaderProps> = ({
     const store = getStorage();
     try {
       setAllBoardKeys(await store.list('boards'));
-      setSavedToolKeys(await store.list('saved_widgets'));
+      const savedKeys = await store.list('saved_widgets');
+      // The type isn't in the key, so read each entry to show which widget it configures.
+      const saved = await Promise.all(
+        savedKeys.map(async (key) => ({
+          key,
+          type: (await store.get<{ type: string }>('saved_widgets', key))?.type ?? '',
+        })),
+      );
+      setSavedWidgets(saved);
     } catch (e) {
       userAlert('Could not list saved items', 'fail', e instanceof Error ? e.message : String(e));
     }
@@ -90,34 +98,30 @@ const NavHeader: React.FC<NavHeaderProps> = ({
     setDirty(false);
   };
 
-  // One menu for everything you can add: built-in tools first, then anything
-  // the user saved a configuration for. Two separate dropdowns for these was
-  // the clunky part - they answer the same question ("what goes on the board?").
-  const addItems: ToolMenuItem[] = [
-    ...allWidgets.map((widget) => {
-      const existingCount = currentWidgets.filter((w) => w.type === widget.type).length;
-      return {
-        label: widget.name,
-        value: `type:${widget.type}`,
-        description: widget.description,
-        group: 'Tools',
-        disabled: existingCount >= widget.maxNo,
-      };
-    }),
-    ...savedToolKeys.map((k) => ({
-      label: k,
-      value: `saved:${k}`,
-      description: 'Saved configuration',
-      group: 'Saved',
-    })),
-  ];
+  const widgetAtMax = (type: string, maxNo: number) =>
+    currentWidgets.filter((w) => w.type === type).length >= maxNo;
 
-  const onAddSelect = async (value: string) => {
-    if (value.startsWith('type:')) {
-      addWidget(value.slice(5));
-      return;
-    }
-    const key = value.slice(6);
+  const addItems: ToolMenuItem[] = allWidgets.map((widget) => ({
+    label: widget.name,
+    value: widget.type,
+    description: widget.description,
+    disabled: widgetAtMax(widget.type, widget.maxNo),
+  }));
+
+  // Saved configurations, labelled by their saved name with the widget they
+  // configure underneath. Entries whose widget type no longer exists are skipped.
+  const savedItems: ToolMenuItem[] = savedWidgets.flatMap(({ key, type }) => {
+    const widget = allWidgets.find((w) => w.type === type);
+    if (!widget) return [];
+    return [{
+      label: key,
+      value: key,
+      description: widget.name,
+      disabled: widgetAtMax(type, widget.maxNo),
+    }];
+  });
+
+  const onAddSavedSelect = async (key: string) => {
     const saved = await getStorage().get<{ type: string; settings: Record<string, any> }>(
       'saved_widgets',
       key,
@@ -244,11 +248,20 @@ const NavHeader: React.FC<NavHeaderProps> = ({
           <ToolMenu
             label="Add to board"
             items={addItems}
-            onSelect={(v) => void onAddSelect(v)}
+            onSelect={addWidget}
             typ="info"
             icon={<MdAdd />}
             emptyText="No tools available"
             hotkey="Digit1"
+          />
+          <ToolMenu
+            label="Add saved widget"
+            items={savedItems}
+            onSelect={(k) => void onAddSavedSelect(k)}
+            typ="info"
+            icon={<MdAdd />}
+            emptyText="No saved widgets yet. Right-click a widget tab and choose Save As."
+            hotkey="Digit2"
           />
         </HStack>
 

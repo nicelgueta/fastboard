@@ -146,20 +146,26 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
     };
     const commitOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && e.currentTarget.blur();
 
+    // A link post can carry text as well as its URL, so show both: the URL first, then the body.
     const previewBody = preview && (
         preview.postHint === 'image' || (!preview.isSelf && isImageUrl(preview.url)) ? (
             <Image src={preview.url} maxH="70vh" mx="auto" />
-        ) : preview.selftext ? (
-            <Box
-                fontSize="sm" color={colors.fore}
-                sx={{ 'p, ul, ol, pre': { mb: 3 }, a: { color: colors.info, textDecoration: 'underline' }, ul: { pl: 5 }, ol: { pl: 5 } }}
-            >
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{preview.selftext}</ReactMarkdown>
-            </Box>
-        ) : !preview.isSelf ? (
-            <Link isExternal href={preview.url} color={colors.info} fontSize="sm" wordBreak="break-all">{preview.url}</Link>
         ) : (
-            <Text fontSize="sm" color={colors.foreHalf}>This post has no text.</Text>
+            <VStack align="stretch" spacing={4}>
+                {!preview.isSelf && (
+                    <Link isExternal href={preview.url} color={colors.info} fontSize="sm" wordBreak="break-all">{preview.url}</Link>
+                )}
+                {preview.selftext ? (
+                    <Box
+                        fontSize="sm" color={colors.fore}
+                        sx={{ 'p, ul, ol, pre': { mb: 3 }, a: { color: colors.info, textDecoration: 'underline' }, ul: { pl: 5 }, ol: { pl: 5 } }}
+                    >
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{preview.selftext}</ReactMarkdown>
+                    </Box>
+                ) : preview.isSelf ? (
+                    <Text fontSize="sm" color={colors.foreHalf}>This post has no text.</Text>
+                ) : null}
+            </VStack>
         )
     );
 
