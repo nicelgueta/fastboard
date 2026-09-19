@@ -1,5 +1,4 @@
-// Pure helpers shared by the Reddit widget (browser) and the SSE bridge
-// (vite-plugins/redditStream.ts, node). Keep this file free of DOM/node imports.
+// Pure helpers for the Reddit widget. The stream it reads is served by server/ (Haskell).
 
 export interface RedditPost {
     /** Reddit fullname, e.g. "t3_abc123". Unique - used as the dedupe key. */
@@ -13,8 +12,6 @@ export interface RedditPost {
     url: string;
     createdUtc: number;
     isSelf: boolean;
-    // score, numComments, flair, over18 and postHint are only present when the post
-    // came from Reddit's JSON API (OAuth or plain); the Atom fallback carries none.
     score?: number;
     numComments?: number;
     flair?: string;
@@ -29,19 +26,20 @@ export interface RedditPost {
 
 export const MAX_SELFTEXT = 8000;
 
-/** Wire format of the bridge's SSE events. */
+/**
+ * The stream (server/Main.hs, GET /sse/redditSearch) sends an unnamed `message` event
+ * whenever the newest post changes: `{ data: <Reddit listing children> }`, which
+ * parseListing turns into posts. This is the one named event.
+ */
 export const STREAM_EVENTS = {
-    /** data: RedditPost[] - the current front of /new, sent once per connection. */
-    snapshot: 'snapshot',
-    /** data: RedditPost - a post not seen before on this connection. */
-    post: 'post',
     /** data: { message: string } - the upstream poll failed; the stream keeps retrying. */
     streamError: 'stream-error',
-    /** No data - a poll succeeded after one or more failures, so the client can clear its error. */
-    streamOk: 'stream-ok',
 } as const;
 
-export const DEFAULT_STREAM_URL = '/api/reddit/stream';
+/** How many of a subreddit's newest posts to ask Reddit for on each poll. */
+export const LISTING_LIMIT = 25;
+
+export const DEFAULT_STREAM_URL = '/sse/redditSearch';
 export const DEFAULT_SUBREDDIT = 'programming';
 export const DEFAULT_MAX_POSTS = 100;
 export const MAX_POSTS_OPTIONS = [25, 50, 100, 250, 500];
@@ -51,8 +49,8 @@ const SUBREDDIT_RE = new RegExp(`^${NAME}(\\+${NAME})*$`);
 
 /**
  * Accepts "python", "r/python", "/r/python/" and "a+b" multi-reddits; returns
- * the bare name or null if it isn't a valid subreddit. The result is spliced
- * into an upstream URL on the server, so this is the injection guard.
+ * the bare name or null if it isn't a valid subreddit. The server
+ * puts this in an upstream URL path, so this is the first injection guard.
  */
 export const normalizeSubreddit = (input: string | undefined | null): string | null => {
     const s = (input ?? '').trim().replace(/^\/?r\//i, '').replace(/\/+$/, '');
@@ -74,105 +72,9 @@ export interface StreamTarget {
 export const buildStreamUrl = (base: string, target: StreamTarget): string => {
     const params = new URLSearchParams();
     if (target.subreddit) params.set('subreddit', target.subreddit);
-    if (target.query) params.set('q', target.query);
+    if (target.query) params.set('search_term', target.query);
+    params.set('limit', String(LISTING_LIMIT));
     return `${base}${base.includes('?') ? '&' : '?'}${params}`;
-};
-
-/**
- * Where to read a target's newest posts on Reddit: a path (no extension) and
- * its query params. Callers append `.json` or `.rss` (or use the path as-is on
- * oauth.reddit.com). All values are URL-encoded by URLSearchParams.
- */
-export const upstreamRequest = (target: StreamTarget, limit: number): { path: string; params: URLSearchParams } => {
-    const params = new URLSearchParams({ limit: String(limit) });
-    if (!target.query) return { path: `/r/${target.subreddit}/new`, params };
-    params.set('q', target.query);
-    params.set('sort', 'new');
-    if (target.subreddit) params.set('restrict_sr', '1');
-    return { path: target.subreddit ? `/r/${target.subreddit}/search` : '/search', params };
-};
-
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
-
-const decodeEntities = (s: string): string =>
-    s.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, dec, hex, name) => {
-        if (dec) return String.fromCodePoint(Number(dec));
-        if (hex) return String.fromCodePoint(parseInt(hex, 16));
-        return ENTITIES[name.toLowerCase()] ?? m;
-    });
-
-const tagText = (xml: string, tag: string): string | undefined => {
-    const m = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`).exec(xml);
-    return m ? decodeEntities(m[1]) : undefined;
-};
-
-/**
- * The small HTML subset Reddit renders post bodies with (paragraphs, headings,
- * lists, emphasis, links, code, quotes, tables) -> markdown. Anything else is
- * stripped to its text. Entities are decoded last so escaped text like
- * "&lt;div&gt;" survives the tag strip.
- */
-export const htmlToMarkdown = (html: string): string => {
-    const md = html
-        .replace(/<!--[\s\S]*?-->/g, '')
-        .replace(/<pre[^>]*>\s*(?:<code[^>]*>)?([\s\S]*?)(?:<\/code>)?\s*<\/pre>/gi, (_, code) => `\n\n\`\`\`\n${code.replace(/<[^>]+>/g, '')}\n\`\`\`\n\n`)
-        .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
-        .replace(/<a\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
-        .replace(/<(?:strong|b)>([\s\S]*?)<\/(?:strong|b)>/gi, '**$1**')
-        .replace(/<(?:em|i)>([\s\S]*?)<\/(?:em|i)>/gi, '*$1*')
-        .replace(/<(?:del|s)>([\s\S]*?)<\/(?:del|s)>/gi, '~~$1~~')
-        .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, n, t) => `\n\n${'#'.repeat(Number(n))} ${t}\n\n`)
-        .replace(/<li[^>]*>/gi, '\n- ')
-        .replace(/<blockquote[^>]*>/gi, '\n\n> ')
-        .replace(/<hr\s*\/?>/gi, '\n\n---\n\n')
-        .replace(/<br\s*\/?>/gi, '  \n')
-        .replace(/<\/(?:p|ul|ol|blockquote|div)>/gi, '\n\n')
-        .replace(/<\/tr>/gi, '\n')
-        .replace(/<\/t[dh]>/gi, ' | ')
-        .replace(/<[^>]+>/g, '');
-    return decodeEntities(md).replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
-};
-
-/**
- * Reddit's Atom feed (/r/<sub>/new.rss) -> posts, newest first (the feed's own
- * order). We use Atom because Reddit answers unauthenticated .json listing
- * requests with 403, while the feed is still served. The trade-off is that
- * Atom carries no score, comment count, flair or NSFW flag, but does include the
- * post body (as HTML, converted here) and, for link posts, a thumbnail. Entries missing an
- * id or title are skipped; anything that isn't a feed yields [].
- */
-export const parseAtomFeed = (xml: string): RedditPost[] => {
-    const posts: RedditPost[] = [];
-    for (const m of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
-        const e = m[1];
-        const id = tagText(e, 'id');
-        const title = tagText(e, 'title');
-        if (!id || !title) continue;
-        const permalink = /<link\s+href="([^"]+)"/.exec(e)?.[1];
-        const content = tagText(e, 'content') ?? '';
-        // Link posts carry their outbound URL in the [link] anchor; self posts point back at the thread.
-        const outboundRaw = /<a href="([^"]+)">\[link\]<\/a>/.exec(content)?.[1];
-        // The HTML inside <content> is itself escaped, so the href needs a second decode.
-        const outbound = outboundRaw && decodeEntities(outboundRaw);
-        const published = Date.parse(tagText(e, 'published') ?? tagText(e, 'updated') ?? '');
-        const link = decodeEntities(permalink ?? '');
-        // Self posts wrap their body in <div class="md">; link posts have no such block.
-        const body = /<div class="md">([\s\S]*?)<\/div>\s*<!-- SC_ON -->/.exec(content)?.[1];
-        const thumbnail = /<media:thumbnail\s+url="([^"]+)"/.exec(e)?.[1];
-        posts.push({
-            id,
-            title: title.trim(),
-            author: (tagText(e, 'name') ?? '[deleted]').replace(/^\/u\//, '').trim(),
-            subreddit: /<category term="([^"]*)"/.exec(e)?.[1] ?? '',
-            permalink: link,
-            url: outbound ?? link,
-            createdUtc: Number.isNaN(published) ? 0 : Math.floor(published / 1000),
-            isSelf: !outbound || outbound === link,
-            thumbnail: thumbnail ? decodeEntities(thumbnail) : undefined,
-            selftext: (body && htmlToMarkdown(body).slice(0, MAX_SELFTEXT)) || undefined,
-        });
-    }
-    return posts;
 };
 
 interface ListingChild {
@@ -240,7 +142,6 @@ export const SORT_OPTIONS: { value: PostSort; label: string }[] = [
     { value: 'title', label: 'Title A-Z' },
 ];
 
-/** Score and comment counts come only from Reddit's JSON API; the Atom fallback has neither. */
 export const sortNeedsCounts = (sort: PostSort): boolean => sort === 'top' || sort === 'comments';
 export const hasCounts = (posts: RedditPost[]): boolean =>
     posts.some((p) => p.score !== undefined || p.numComments !== undefined);

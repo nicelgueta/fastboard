@@ -24,6 +24,7 @@ import {
     mergePosts,
     normalizeQuery,
     normalizeSubreddit,
+    parseListing,
     sortNeedsCounts,
     sortPosts,
     timeAgo,
@@ -116,22 +117,23 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
         setStatus('connecting');
 
         const es = new EventSource(buildStreamUrl(streamUrl, { subreddit, query }));
-        // EventSource reconnects on its own after a drop; the server then sends a fresh
-        // snapshot, which mergePosts dedupes against what we already have.
+        // Each message is the current listing, sent when its newest post changes. Anything
+        // not seen before after the first one is "new"; EventSource reconnects on its own
+        // and the server then resends the listing, which mergePosts dedupes.
+        const known = new Set<string>();
         es.onopen = () => setStatus('live');
         es.onerror = () => setStatus(es.readyState === EventSource.CLOSED ? 'connecting' : 'reconnecting');
-        es.addEventListener(STREAM_EVENTS.snapshot, (e) => {
-            setPosts((prev) => mergePosts(prev, JSON.parse((e as MessageEvent).data), maxRef.current));
-        });
-        es.addEventListener(STREAM_EVENTS.post, (e) => {
-            const post: RedditPost = JSON.parse((e as MessageEvent).data);
-            setPosts((prev) => mergePosts(prev, [post], maxRef.current));
-            setLiveIds((prev) => new Set(prev).add(post.id));
-        });
+        es.onmessage = (e) => {
+            const incoming = parseListing({ data: { children: JSON.parse(e.data).data } });
+            const fresh = incoming.filter((p) => !known.has(p.id));
+            if (known.size > 0) setLiveIds((prev) => new Set([...prev, ...fresh.map((p) => p.id)]));
+            fresh.forEach((p) => known.add(p.id));
+            setPosts((prev) => mergePosts(prev, incoming, maxRef.current));
+            setStreamError(undefined);
+        };
         es.addEventListener(STREAM_EVENTS.streamError, (e) => {
             setStreamError(JSON.parse((e as MessageEvent).data).message);
         });
-        es.addEventListener(STREAM_EVENTS.streamOk, () => setStreamError(undefined));
         return () => es.close();
     }, [subreddit, query, streamUrl, paused, hasTarget]);
 
@@ -210,7 +212,7 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
                 </Select>
                 <Select
                     {...controlProps} w="140px" aria-label="Sort" value={sort}
-                    title="Order of the posts held. Score and comment sorts need Reddit's JSON API (set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET for the bridge); the public feed does not include them."
+                    title="Order of the posts held (the newest ones seen), not of the whole subreddit."
                     onChange={(e) => setState({ sort: asPostSort(e.target.value) })}
                 >
                     {SORT_OPTIONS.map((o) => (
@@ -222,7 +224,7 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
                 </Select>
                 <Input
                     {...controlProps} w="150px" placeholder="Stream URL" aria-label="Stream URL"
-                    title="SSE endpoint that emits Reddit posts. The dev/preview server provides the default; point elsewhere for a hosted deployment."
+                    title="SSE endpoint that emits Reddit listings. fastboard-server provides the default."
                     value={streamUrlDraft} isDisabled={isStatic}
                     onChange={(e) => setStreamUrlDraft(e.target.value)}
                     onBlur={() => commitText('streamUrl', streamUrlDraft.trim() || DEFAULT_STREAM_URL, streamUrl)}

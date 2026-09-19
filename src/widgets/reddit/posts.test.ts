@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    normalizeSubreddit, normalizeQuery, buildStreamUrl, upstreamRequest, parseListing, parseAtomFeed, htmlToMarkdown, mergePosts, timeAgo, RedditPost,
+    normalizeSubreddit, normalizeQuery, buildStreamUrl, parseListing, mergePosts, timeAgo, RedditPost,
     sortPosts, asPostSort, hasCounts, sortNeedsCounts,
 } from './posts';
 
@@ -35,30 +35,10 @@ describe('normalizeQuery', () => {
 });
 
 describe('buildStreamUrl', () => {
-    it('encodes the target as query params', () => {
-        expect(buildStreamUrl('/api/reddit/stream', { subreddit: 'a+b' })).toBe('/api/reddit/stream?subreddit=a%2Bb');
-        expect(buildStreamUrl('https://x.test/s?k=1', { subreddit: 'a', query: 'c & d' })).toBe('https://x.test/s?k=1&subreddit=a&q=c+%26+d');
-        expect(buildStreamUrl('/s', { query: 'q' })).toBe('/s?q=q');
-    });
-});
-
-describe('upstreamRequest', () => {
-    it('reads a subreddit\'s new posts', () => {
-        const { path, params } = upstreamRequest({ subreddit: 'python' }, 25);
-        expect(path).toBe('/r/python/new');
-        expect(params.toString()).toBe('limit=25');
-    });
-    it('searches within a subreddit, newest first', () => {
-        const { path, params } = upstreamRequest({ subreddit: 'python', query: 'a&b' }, 25);
-        expect(path).toBe('/r/python/search');
-        expect(params.get('q')).toBe('a&b');
-        expect(params.get('sort')).toBe('new');
-        expect(params.get('restrict_sr')).toBe('1');
-    });
-    it('searches all of Reddit without a subreddit', () => {
-        const { path, params } = upstreamRequest({ query: 'x' }, 10);
-        expect(path).toBe('/search');
-        expect(params.has('restrict_sr')).toBe(false);
+    it('encodes the target as query params, always with a limit', () => {
+        expect(buildStreamUrl('/sse/redditSearch', { subreddit: 'a+b' })).toBe('/sse/redditSearch?subreddit=a%2Bb&limit=25');
+        expect(buildStreamUrl('https://x.test/s?k=1', { subreddit: 'a', query: 'c & d' })).toBe('https://x.test/s?k=1&subreddit=a&search_term=c+%26+d&limit=25');
+        expect(buildStreamUrl('/s', { query: 'q' })).toBe('/s?search_term=q&limit=25');
     });
 });
 
@@ -96,73 +76,6 @@ describe('parseListing', () => {
         expect(parseListing(null)).toEqual([]);
         expect(parseListing({ data: {} })).toEqual([]);
         expect(parseListing({ message: 'Too Many Requests', error: 429 })).toEqual([]);
-    });
-});
-
-describe('parseAtomFeed', () => {
-    const entry = (id: string, title: string, opts: { outbound?: string; author?: string; body?: string; thumb?: string } = {}) => `
-        <entry>
-          <author><name>/u/${opts.author ?? 'bob'}</name><uri>https://www.reddit.com/user/bob</uri></author>
-          <category term="Python" label="r/Python"/>
-          <content type="html">${opts.body ?? ''}&lt;div&gt;&lt;span&gt;&lt;a href=&quot;${opts.outbound ?? `https://www.reddit.com/r/Python/comments/${id}/t/`}&quot;&gt;[link]&lt;/a&gt;&lt;/span&gt;&lt;/div&gt;</content>
-          ${opts.thumb ? `<media:thumbnail url="${opts.thumb}" />` : ''}
-          <id>t3_${id}</id>
-          <link href="https://www.reddit.com/r/Python/comments/${id}/t/" />
-          <updated>2026-09-19T18:37:04+00:00</updated>
-          <published>2026-09-19T18:37:04+00:00</published>
-          <title>${title}</title>
-        </entry>`;
-    const feed = (...entries: string[]) => `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>newest</title>${entries.join('')}</feed>`;
-
-    it('maps entries for self posts', () => {
-        const [p] = parseAtomFeed(feed(entry('abc', 'Hello')));
-        expect(p).toEqual({
-            id: 't3_abc', title: 'Hello', author: 'bob', subreddit: 'Python',
-            permalink: 'https://www.reddit.com/r/Python/comments/abc/t/',
-            url: 'https://www.reddit.com/r/Python/comments/abc/t/',
-            createdUtc: Date.parse('2026-09-19T18:37:04+00:00') / 1000, isSelf: true,
-        });
-    });
-    it('extracts the body of self posts as markdown', () => {
-        const body = '&lt;!-- SC_OFF --&gt;&lt;div class=&quot;md&quot;&gt;&lt;p&gt;Hello &lt;strong&gt;world&lt;/strong&gt; &amp;amp; co&lt;/p&gt; &lt;ul&gt;&lt;li&gt;one&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;!-- SC_ON --&gt;';
-        const [p] = parseAtomFeed(feed(entry('b', 'Body', { body })));
-        expect(p.selftext).toBe('Hello **world** & co\n\n- one');
-    });
-    it('leaves selftext empty for link posts and reads media thumbnails', () => {
-        const [p] = parseAtomFeed(feed(entry('t', 'Pic', { outbound: 'https://i.example/a.jpg', thumb: 'https://t.example/x.jpg?a=1&amp;b=2' })));
-        expect(p.selftext).toBeUndefined();
-        expect(p.thumbnail).toBe('https://t.example/x.jpg?a=1&b=2');
-    });
-    it('takes the outbound url of link posts, decoding entities twice', () => {
-        const [p] = parseAtomFeed(feed(entry('x', 'Link', { outbound: 'https://example.com/a?b=1&amp;amp;c=2' })));
-        expect(p.url).toBe('https://example.com/a?b=1&c=2');
-        expect(p.isSelf).toBe(false);
-        expect(p.permalink).toContain('/comments/x/');
-    });
-    it('decodes entities in titles', () => {
-        const [p] = parseAtomFeed(feed(entry('e', 'Tom &amp; Jerry &lt;3 &#39;quotes&#39; &#x1F600; it&amp;#39;s')));
-        expect(p.title).toBe("Tom & Jerry <3 'quotes' \u{1F600} it&#39;s");
-    });
-    it('keeps feed order and skips entries without an id or title', () => {
-        const posts = parseAtomFeed(feed(entry('1', 'one'), '<entry><title>no id</title></entry>', entry('2', 'two')));
-        expect(posts.map((p) => p.id)).toEqual(['t3_1', 't3_2']);
-    });
-    it('returns [] for non-feeds', () => {
-        expect(parseAtomFeed('')).toEqual([]);
-        expect(parseAtomFeed('<html>Too Many Requests</html>')).toEqual([]);
-    });
-});
-
-describe('htmlToMarkdown', () => {
-    it('converts headings, emphasis, links, code and quotes', () => {
-        const md = htmlToMarkdown(
-            '<h2>Title</h2><p>a <em>b</em> <a href="https://x.test/?q=1&amp;r=2">link</a> <code>x &lt; y</code></p>' +
-            '<blockquote><p>quoted</p></blockquote><pre><code>line1\nline2</code></pre>',
-        );
-        expect(md).toBe('## Title\n\na *b* [link](https://x.test/?q=1&r=2) `x < y`\n\n> quoted\n\n```\nline1\nline2\n```');
-    });
-    it('keeps escaped angle brackets as text and strips unknown tags', () => {
-        expect(htmlToMarkdown('<span>use &lt;div&gt; here</span><br/>next')).toBe('use <div> here\nnext');
     });
 });
 
