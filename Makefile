@@ -1,6 +1,11 @@
 # cabal comes from ghcup, which non-login shells (and make) may not have on PATH.
 export PATH := $(HOME)/.ghcup/bin:$(PATH)
 
+# Reddit OAuth credentials for the server, from an optional .env (KEY=value lines, no quotes)
+# or the environment. See the readme's Reddit section.
+-include .env
+export REDDIT_CLIENT_ID REDDIT_CLIENT_SECRET
+
 .PHONY: install build build-web build-server run run-server dev dev-web dev-server test
 
 install:

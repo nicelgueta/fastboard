@@ -275,4 +275,14 @@ cd server && cabal run fastboard-server      # http://127.0.0.1:8080; PORT and F
 
 For `yarn dev`, run the server alongside it: Vite proxies `/sse` to port 8080. Building needs GHC and cabal (via [ghcup](https://www.haskell.org/ghcup/)) plus `libgmp-dev`.
 
-Reddit answers many unauthenticated `.json` requests with 403, so a poll can fail with "Reddit responded 403" from some networks; the widget shows that message and keeps retrying.
+Reddit answers many unauthenticated `.json` requests with 403 (the widget then shows "Reddit responded 403"). To get past it, give the server Reddit OAuth credentials:
+
+1. Create an app at https://www.reddit.com/prefs/apps: type **script**, any name, redirect URI `http://localhost`. The client id is the string under the app name; the secret is labelled "secret".
+2. Put them in a `.env` file in the repo root (gitignored, no quotes), or export them in your shell:
+
+   ```
+   REDDIT_CLIENT_ID=your_id
+   REDDIT_CLIENT_SECRET=your_secret
+   ```
+
+3. `make run` (or `make dev`). The server logs `Reddit: OAuth` on start and polls `oauth.reddit.com` instead.
