@@ -2,7 +2,7 @@ import type { BaseWidgetDict } from '../../interfaces';
 import { DefaultLayout } from '../../layout';
 
 // Kept dependency-free so registry.ts can list the widget without loading it.
-// The subreddit, search, post cap, NSFW filter and stream URL are edited from the widget's own
+// The subreddit, search, post cap, sort, NSFW filter and stream URL are edited from the widget's own
 // toolbar and saved with its state (see RedditWidget.tsx), so there are no
 // declarative settings here - same approach as the code editor.
 export const RedditWidgetConfig: BaseWidgetDict = {

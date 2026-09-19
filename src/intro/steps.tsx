@@ -13,7 +13,7 @@ export interface IntroStep {
 //   - header controls ........ nav/nav-header.tsx, nav/ToolMenu.tsx, nav/BoardMenu.tsx
 //   - tab right-click menu ... layout/Main.tsx (getTabContextMenuItems), layout/WidgetTab.tsx
 //   - group pop-out .......... layout/GroupHeaderActions.tsx
-//   - placement prompt ....... layout/DockPlacementModal.tsx
+//   - placement mode ......... layout/PlacementOverlay.tsx
 //   - settings & storage ..... components/AppSettingsModal.tsx, store/storage.ts
 //   - table widget ........... widgets/table/TableWidget.tsx, data/engines.ts
 //   - editor widget .......... widgets/editor/EditorWidget.tsx
@@ -56,8 +56,10 @@ export const INTRO_STEPS: IntroStep[] = [
           with the tool they configure underneath.
         </Text>
         <Text color={colors.fore}>
-          When the board already has something on it, you are asked where the new tool should go:
-          the top, bottom, left or right of the board, or as another tab.
+          When the board already has something on it, the new tool sticks to your cursor so you can
+          place it: move over a widget to dock beside it (the highlight shows where it will land),
+          over the middle of one to add it as another tab, or near the edge of the board to span
+          that whole side. Click to drop it, <Kbd>Esc</Kbd> to cancel.
         </Text>
       </VStack>
     ),

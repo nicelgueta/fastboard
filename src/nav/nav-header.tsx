@@ -9,7 +9,7 @@ import useAppColors from '../hooks/useAppColors';
 import ToolMenu, { ToolMenuItem } from './ToolMenu';
 import BoardMenu from './BoardMenu';
 import AppSettingsModal from '../components/AppSettingsModal';
-import { useWidgetStore } from '../store/widgetStore';
+import { useWidgetStore, WidgetRecord } from '../store/widgetStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { SerializedDockview } from 'dockview-react';
 import { BaseWidgetDict, WidgetDict } from '../interfaces';
@@ -32,6 +32,13 @@ interface NavHeaderProps {
   currentBoardKey: string;
   setCurrentBoardKey: (key: string) => void;
 }
+
+const fingerprintOf = (widgets: Record<string, WidgetRecord>, states: Record<string, unknown>) =>
+  JSON.stringify(
+    Object.keys(widgets)
+      .sort()
+      .map((k) => [k, widgets[k].name, widgets[k].settings, states[k]]),
+  );
 
 const NavHeader: React.FC<NavHeaderProps> = ({
   toggleNav,
@@ -56,6 +63,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({
   const { open: introOpen, setOpen: setIntroOpen, dismiss: dismissIntro } = useIntro(true);
 
   const widgetStates = useWidgetStore(useShallow((s) => s.states));
+  const storeWidgets = useWidgetStore(useShallow((s) => s.widgets));
   const userAlert = useUserAlert();
 
   // Storage is pluggable now (localStorage by default, a REST backend when
@@ -81,21 +89,27 @@ const NavHeader: React.FC<NavHeaderProps> = ({
 
   React.useEffect(() => { void refreshLists(); }, [refreshLists, saveAsOpen, settingsOpen]);
 
-  // "Unsaved changes" marker on the board name: any widget add/remove/rename
-  // or settings change since the last save marks the board dirty.
+  // "Unsaved changes" marker on the board name: any widget add/remove/rename,
+  // Settings change, or change to a widget's own saved state (editor text,
+  // Reddit subreddit, table filter, ...) since the last save marks the board
+  // dirty. Layout moves are not tracked.
   const [dirty, setDirty] = React.useState(false);
-  const boardFingerprint = React.useMemo(
-    () => JSON.stringify(currentWidgets.map((w) => [w.key, w.name, w.currentSettings])),
-    [currentWidgets],
-  );
+  const boardFingerprint = React.useMemo(() => fingerprintOf(storeWidgets, widgetStates), [storeWidgets, widgetStates]);
   const savedFingerprint = React.useRef<string>(boardFingerprint);
   React.useEffect(() => {
     setDirty(boardFingerprint !== savedFingerprint.current);
   }, [boardFingerprint]);
 
-  const markSaved = () => {
-    savedFingerprint.current = boardFingerprint;
-    setDirty(false);
+  // Takes the snapshot to treat as saved. Defaults to the store as it is right
+  // now, not this render's copy: after opening a board the store has just been
+  // replaced, and this render's closure still holds the previous board's.
+  const liveFingerprint = () => {
+    const { widgets, states } = useWidgetStore.getState();
+    return fingerprintOf(widgets, states);
+  };
+  const markSaved = (fingerprint: string = liveFingerprint()) => {
+    savedFingerprint.current = fingerprint;
+    setDirty(boardFingerprint !== fingerprint);
   };
 
   const widgetAtMax = (type: string, maxNo: number) =>
@@ -136,6 +150,8 @@ const NavHeader: React.FC<NavHeaderProps> = ({
   const saveBoard = async (key: string) => {
     const layout = getCurrentLayout();
     if (!layout || !key) return;
+    // Snapshot before the async write, so an edit made while it is in flight stays unsaved.
+    const saved = liveFingerprint();
     try {
       await getStorage().set('boards', key, {
         name: key,
@@ -144,7 +160,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({
         widgets: currentWidgets,
         widgetStates,
       });
-      markSaved();
+      markSaved(saved);
       userAlert(`"${key}" saved`, 'success');
       void refreshLists();
     } catch (e) {

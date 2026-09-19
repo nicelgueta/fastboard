@@ -81,8 +81,17 @@ const BoardMenu: React.FC<BoardMenuProps> = ({
                 <HStack spacing={2} minW={0}>
                     <Text noOfLines={1}>{currentBoard || 'Untitled board'}</Text>
                     {dirty ? (
-                        // Quiet unsaved marker, the way an editor shows a dirty file.
-                        <Box w="6px" h="6px" borderRadius="full" bg={colors.info} flexShrink={0} />
+                        // Unsaved marker, the way an editor shows a dirty file.
+                        <Box
+                            role="img"
+                            aria-label="Unsaved changes"
+                            title="Unsaved changes"
+                            w="8px"
+                            h="8px"
+                            borderRadius="full"
+                            bg={colors.success}
+                            flexShrink={0}
+                        />
                     ) : null}
                 </HStack>
             </MenuButton>

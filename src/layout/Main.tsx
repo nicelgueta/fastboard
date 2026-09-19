@@ -17,7 +17,8 @@ import useAppColors from '../hooks/useAppColors';
 import WidgetPanel from './WidgetPanel';
 import WidgetTab from './WidgetTab';
 import GroupHeaderActions from './GroupHeaderActions';
-import DockPlacementModal, { DockDirection } from './DockPlacementModal';
+import GroupRightActions from './GroupRightActions';
+import PlacementOverlay, { PlacementTarget } from './PlacementOverlay';
 import { PanelContext, PanelActions } from './PanelContext';
 import { WidgetPanelParams } from './types';
 
@@ -212,9 +213,8 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
     }
 
     // A widget picked from the tool menu doesn't drop straight in as another
-    // tab - it waits here for the user to pick a quadrant via
-    // DockPlacementModal, unless the board is empty (nothing to dock
-    // relative to yet).
+    // tab - it waits here while PlacementOverlay lets the user drop it where
+    // they want, unless the board is empty (nothing to dock relative to yet).
     const [pendingAdd, setPendingAdd] = useState<{
         type: string;
         widgetDict: BaseWidgetDict;
@@ -222,12 +222,19 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         savedSettings?: Record<string, any>;
     } | null>(null);
 
+    // 'within' a group is another tab there; a side of a group splits it; no group
+    // means dock against the whole board.
+    const positionFor = ({ direction, group }: PlacementTarget) => {
+        if (group) return { referenceGroup: group, direction };
+        return { direction: direction as 'above' | 'below' | 'left' | 'right' };
+    };
+
     const createWidget = (
         type: string,
         widgetDict: BaseWidgetDict,
         displayName: string,
         savedSettings: Record<string, any> | undefined,
-        direction?: DockDirection,
+        target?: PlacementTarget,
     ) => {
         if (!dockviewApi) return;
         const widgeTypeNumber = new Date().getTime();
@@ -247,7 +254,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             params,
             initialWidth: widgetDict.defaultLayout.initialWidth,
             initialHeight: widgetDict.defaultLayout.initialHeight,
-            ...(direction && direction !== 'within' ? { position: { direction } } : {}),
+            ...(target ? { position: positionFor(target) } : {}),
         });
 
         register({
@@ -295,12 +302,12 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         setPendingAdd({ type, widgetDict, displayName, savedSettings });
     };
 
-    const handlePlacementSelect = (direction: DockDirection) => {
+    const handlePlacementSelect = (target: PlacementTarget) => {
         if (!pendingAdd) return;
-        createWidget(pendingAdd.type, pendingAdd.widgetDict, pendingAdd.displayName, pendingAdd.savedSettings, direction);
+        createWidget(pendingAdd.type, pendingAdd.widgetDict, pendingAdd.displayName, pendingAdd.savedSettings, target);
         setPendingAdd(null);
     };
-    const handlePlacementCancel = () => setPendingAdd(null);
+    const handlePlacementCancel = React.useCallback(() => setPendingAdd(null), []);
 
     const getCurrentLayout = () => dockviewApi?.toJSON();
 
@@ -326,12 +333,14 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             }}
         >
             <title>{appName}</title>
-            <DockPlacementModal
-                isOpen={!!pendingAdd}
-                widgetName={pendingAdd?.displayName ?? ''}
-                onSelect={handlePlacementSelect}
-                onCancel={handlePlacementCancel}
-            />
+            {pendingAdd && dockviewApi && (
+                <PlacementOverlay
+                    api={dockviewApi}
+                    widgetName={pendingAdd.displayName}
+                    onPlace={handlePlacementSelect}
+                    onCancel={handlePlacementCancel}
+                />
+            )}
             <Box
                 className='rg-header-nav'
                 style={{
@@ -378,6 +387,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                         components={dockviewComponents}
                         tabComponents={dockviewTabComponents}
                         leftHeaderActionsComponent={GroupHeaderActions}
+                        rightHeaderActionsComponent={GroupRightActions}
                         // A blank static page (public/popout.html). dockview's default is
                         // "/popout.html" too, but resolved against the site root, which breaks
                         // when the app is served from a sub-path.

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     normalizeSubreddit, normalizeQuery, buildStreamUrl, upstreamRequest, parseListing, parseAtomFeed, htmlToMarkdown, mergePosts, timeAgo, RedditPost,
+    sortPosts, asPostSort, hasCounts, sortNeedsCounts,
 } from './posts';
 
 const post = (id: string, extra: Partial<RedditPost> = {}): RedditPost => ({
@@ -189,5 +190,66 @@ describe('timeAgo', () => {
         expect(timeAgo(1_000_000 - 7200, now)).toBe('2h');
         expect(timeAgo(1_000_000 - 172800, now)).toBe('2d');
         expect(timeAgo(1_000_000 + 30, now)).toBe('0s');
+    });
+});
+
+describe('sortPosts', () => {
+    const ids = (ps: RedditPost[]) => ps.map((p) => p.id);
+    const feed = [
+        post('a', { createdUtc: 100, score: 5, numComments: 50, title: 'banana' }),
+        post('b', { createdUtc: 300, score: 50, numComments: 5, title: 'Apple' }),
+        post('c', { createdUtc: 200, score: 20, numComments: 20, title: 'cherry' }),
+    ];
+
+    it('newest and oldest go by time', () => {
+        expect(ids(sortPosts(feed, 'new'))).toEqual(['b', 'c', 'a']);
+        expect(ids(sortPosts(feed, 'old'))).toEqual(['a', 'c', 'b']);
+    });
+    it('top and comments go highest first', () => {
+        expect(ids(sortPosts(feed, 'top'))).toEqual(['b', 'c', 'a']);
+        expect(ids(sortPosts(feed, 'comments'))).toEqual(['a', 'c', 'b']);
+    });
+    it('title is case-insensitive and numeric-aware', () => {
+        expect(ids(sortPosts(feed, 'title'))).toEqual(['b', 'a', 'c']);
+        const nums = [post('x', { title: 'item 10' }), post('y', { title: 'item 2' })];
+        expect(ids(sortPosts(nums, 'title'))).toEqual(['y', 'x']);
+    });
+    it('ties fall back to newest, then id, so the order is deterministic', () => {
+        const tied = [post('m', { score: 1, createdUtc: 10 }), post('n', { score: 1, createdUtc: 20 }), post('k', { score: 1, createdUtc: 20 })];
+        expect(ids(sortPosts(tied, 'top'))).toEqual(['k', 'n', 'm']);
+    });
+    it('a zero score is a real score, not a missing one', () => {
+        const mix = [post('none', { createdUtc: 999 }), post('zero', { score: 0, createdUtc: 1 })];
+        expect(ids(sortPosts(mix, 'top'))).toEqual(['zero', 'none']);
+    });
+    it('posts with no count go after those that have one, newest first among themselves', () => {
+        const mix = [post('old-none', { createdUtc: 1 }), post('scored', { score: 3, createdUtc: 5 }), post('new-none', { createdUtc: 9 })];
+        expect(ids(sortPosts(mix, 'top'))).toEqual(['scored', 'new-none', 'old-none']);
+    });
+    it('with no counts at all, a count sort is just newest first', () => {
+        const bare = [post('a', { createdUtc: 1 }), post('b', { createdUtc: 2 })];
+        expect(ids(sortPosts(bare, 'top'))).toEqual(['b', 'a']);
+        expect(ids(sortPosts(bare, 'comments'))).toEqual(['b', 'a']);
+    });
+    it('does not mutate its input, and handles empty', () => {
+        const input = [...feed];
+        sortPosts(input, 'old');
+        expect(ids(input)).toEqual(['a', 'b', 'c']);
+        expect(sortPosts([], 'top')).toEqual([]);
+    });
+});
+
+describe('sort helpers', () => {
+    it('asPostSort rejects unknown values', () => {
+        expect(asPostSort('top')).toBe('top');
+        expect(asPostSort('bogus')).toBe('new');
+        expect(asPostSort(undefined)).toBe('new');
+    });
+    it('knows which sorts need counts, and whether a feed has them', () => {
+        expect(sortNeedsCounts('top') && sortNeedsCounts('comments')).toBe(true);
+        expect(sortNeedsCounts('new') || sortNeedsCounts('title') || sortNeedsCounts('old')).toBe(false);
+        expect(hasCounts([post('a')])).toBe(false);
+        expect(hasCounts([post('a'), post('b', { score: 0 })])).toBe(true);
+        expect(hasCounts([post('a', { numComments: 2 })])).toBe(true);
     });
 });

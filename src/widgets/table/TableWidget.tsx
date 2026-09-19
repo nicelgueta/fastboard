@@ -12,6 +12,7 @@ import {
     type GridApi,
     type GridReadyEvent,
     type PaginationChangedEvent,
+    type CellContextMenuEvent,
 } from 'ag-grid-community';
 import { useColorMode } from '@chakra-ui/color-mode';
 import useAppColors from '../../hooks/useAppColors';
@@ -32,6 +33,8 @@ import FBButton from '../../components/primitive/Button';
 import FBInput from '../../components/primitive/Input';
 import FBSelect from '../../components/primitive/Select';
 import ExpressionBuilder from './ExpressionBuilder';
+import CellContextMenu from './CellContextMenu';
+import { cellToText, rowToCsv, rowToJson, type CopyColumn } from './rowCopy';
 import { schemaToColDefs } from './colDefs';
 import { useAppSettings } from '../../store/appSettings';
 import type { SortSpec } from '../../data/types';
@@ -228,6 +231,41 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
 
     const onGridReady = React.useCallback((e: GridReadyEvent) => {
         gridApiRef.current = e.api;
+    }, []);
+
+    // Right-click menu on a cell: copy the cell, or the whole row as CSV / JSON.
+    const gridBoxRef = React.useRef<HTMLDivElement>(null);
+    const [cellMenu, setCellMenu] = React.useState<{
+        x: number;
+        y: number;
+        value: unknown;
+        row: Record<string, unknown>;
+        columns: CopyColumn[];
+    }>();
+    const closeCellMenu = React.useCallback(() => setCellMenu(undefined), []);
+    const onCellContextMenu = React.useCallback((e: CellContextMenuEvent) => {
+        const mouse = e.event as MouseEvent | null;
+        const box = gridBoxRef.current?.getBoundingClientRect();
+        // rows still loading from the server have no data to copy
+        if (!mouse || !box || !e.data) return;
+        const columns: CopyColumn[] = e.api.getAllDisplayedColumns().flatMap((c) => {
+            const def = c.getColDef();
+            return def.field ? [{ field: def.field, header: def.headerName }] : [];
+        });
+        setCellMenu({
+            x: mouse.clientX - box.left,
+            y: mouse.clientY - box.top,
+            value: e.value,
+            row: e.data,
+            columns,
+        });
+    }, []);
+    const copyText = React.useCallback((text: string, what: string) => {
+        navigator.clipboard.writeText(text).then(
+            () => alert(`${what} copied`, 'success'),
+            (err) => alert('Copy failed', 'fail', err instanceof Error ? err.message : String(err)),
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const onPaginationChanged = React.useCallback((e: PaginationChangedEvent) => {
@@ -507,7 +545,7 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                 </HStack>
             ) : null}
 
-            <Box flex={1} minH={0} position="relative">
+            <Box ref={gridBoxRef} flex={1} minH={0} position="relative">
                 {loading ? (
                     <Center position="absolute" top={0} left={0} right={0} bottom={0} zIndex={1} bg={colors.bgHalf}>
                         <Spinner color={colors.info} />
@@ -524,6 +562,9 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                         columnDefs={colDefs}
                         onGridReady={onGridReady}
                         onPaginationChanged={onPaginationChanged}
+                        onCellContextMenu={onCellContextMenu}
+                        // suppress the browser's own menu; ours is shown instead
+                        preventDefaultOnContextMenu
                         animateRows={false}
                         {...(pushedMode
                             ? { rowData: rows, pagination: false }
@@ -540,6 +581,20 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                         <Text color={colors.foreHalf}>No data source bound yet.</Text>
                     </Center>
                 )}
+                {cellMenu ? (
+                    <CellContextMenu
+                        x={cellMenu.x}
+                        y={cellMenu.y}
+                        onClose={closeCellMenu}
+                        sections={[
+                            [{ label: 'Copy cell', onSelect: () => copyText(cellToText(cellMenu.value), 'Cell') }],
+                            [
+                                { label: 'Copy row', hint: 'CSV', onSelect: () => copyText(rowToCsv(cellMenu.row, cellMenu.columns), 'Row') },
+                                { label: 'Copy row', hint: 'JSON', onSelect: () => copyText(rowToJson(cellMenu.row, cellMenu.columns), 'Row') },
+                            ],
+                        ]}
+                    />
+                ) : null}
             </Box>
 
             {schema ? (

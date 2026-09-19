@@ -229,6 +229,52 @@ export const mergePosts = (existing: RedditPost[], incoming: RedditPost[], max: 
     return [...added, ...kept].slice(0, Math.max(1, max));
 };
 
+export type PostSort = 'new' | 'old' | 'top' | 'comments' | 'title';
+export const DEFAULT_SORT: PostSort = 'new';
+
+export const SORT_OPTIONS: { value: PostSort; label: string }[] = [
+    { value: 'new', label: 'Newest' },
+    { value: 'old', label: 'Oldest' },
+    { value: 'top', label: 'Top score' },
+    { value: 'comments', label: 'Most comments' },
+    { value: 'title', label: 'Title A-Z' },
+];
+
+/** Score and comment counts come only from Reddit's JSON API; the Atom fallback has neither. */
+export const sortNeedsCounts = (sort: PostSort): boolean => sort === 'top' || sort === 'comments';
+export const hasCounts = (posts: RedditPost[]): boolean =>
+    posts.some((p) => p.score !== undefined || p.numComments !== undefined);
+
+/** Normalise a persisted value: anything unknown (a hand-edited board, an older version) falls back to newest. */
+export const asPostSort = (v: unknown): PostSort =>
+    SORT_OPTIONS.some((o) => o.value === v) ? (v as PostSort) : DEFAULT_SORT;
+
+/**
+ * A new array in the requested order; the input is not touched. Ties (and posts
+ * with no count under a count sort) fall back to newest first, and posts missing
+ * the count go after those that have it, so a partly-populated feed still reads
+ * sensibly. `post.id` is the final tiebreak so the order is fully deterministic.
+ */
+export const sortPosts = (posts: RedditPost[], sort: PostSort): RedditPost[] => {
+    const byNewest = (a: RedditPost, b: RedditPost) => b.createdUtc - a.createdUtc || a.id.localeCompare(b.id);
+    const byCount = (pick: (p: RedditPost) => number | undefined) => (a: RedditPost, b: RedditPost) => {
+        const x = pick(a);
+        const y = pick(b);
+        if (x === undefined && y === undefined) return byNewest(a, b);
+        if (x === undefined) return 1;
+        if (y === undefined) return -1;
+        return y - x || byNewest(a, b);
+    };
+    const cmp =
+        sort === 'old' ? (a: RedditPost, b: RedditPost) => a.createdUtc - b.createdUtc || a.id.localeCompare(b.id)
+        : sort === 'top' ? byCount((p) => p.score)
+        : sort === 'comments' ? byCount((p) => p.numComments)
+        : sort === 'title' ? (a: RedditPost, b: RedditPost) =>
+            a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }) || byNewest(a, b)
+        : byNewest;
+    return [...posts].sort(cmp);
+};
+
 export const timeAgo = (createdUtc: number, nowMs: number = Date.now()): string => {
     const s = Math.max(0, Math.floor(nowMs / 1000 - createdUtc));
     if (s < 60) return `${s}s`;

@@ -16,12 +16,18 @@ import {
     DEFAULT_STREAM_URL,
     DEFAULT_SUBREDDIT,
     MAX_POSTS_OPTIONS,
+    SORT_OPTIONS,
     STREAM_EVENTS,
+    asPostSort,
     buildStreamUrl,
+    hasCounts,
     mergePosts,
     normalizeQuery,
     normalizeSubreddit,
+    sortNeedsCounts,
+    sortPosts,
     timeAgo,
+    type PostSort,
     type RedditPost,
 } from './posts';
 
@@ -30,6 +36,7 @@ interface RedditPersistedState {
     subreddit?: string;
     query?: string;
     maxPosts?: number;
+    sort?: PostSort;
     streamUrl?: string;
     showNsfw?: boolean;
 }
@@ -64,6 +71,7 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
     const subredditSetting = state.subreddit ?? (state.query ? '' : DEFAULT_SUBREDDIT);
     const querySetting = state.query ?? '';
     const maxPosts = state.maxPosts ?? DEFAULT_MAX_POSTS;
+    const sort = asPostSort(state.sort);
     const streamUrl = state.streamUrl ?? DEFAULT_STREAM_URL;
     const showNsfw = state.showNsfw ?? false;
 
@@ -128,7 +136,13 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
     }, [subreddit, query, streamUrl, paused, hasTarget]);
 
     const allowed = React.useMemo(() => posts.filter((p) => showNsfw || !p.over18), [posts, showNsfw]);
-    const visible = React.useMemo(() => allowed.slice(0, Math.max(1, maxPosts)), [allowed, maxPosts]);
+    // Sorting is over the posts held (the newest `maxPosts` seen), not the whole subreddit.
+    const visible = React.useMemo(
+        () => sortPosts(allowed, sort).slice(0, Math.max(1, maxPosts)),
+        [allowed, sort, maxPosts],
+    );
+    // Reddit's public feed carries no scores or comment counts, so those sorts would have nothing to sort on.
+    const countsAvailable = React.useMemo(() => hasCounts(posts), [posts]);
     const hiddenNsfw = posts.length - allowed.length;
 
     const controlProps = {
@@ -194,6 +208,18 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
                 >
                     {MAX_POSTS_OPTIONS.map((n) => <option key={n} value={n}>{n} posts</option>)}
                 </Select>
+                <Select
+                    {...controlProps} w="140px" aria-label="Sort" value={sort}
+                    title="Order of the posts held. Score and comment sorts need Reddit's JSON API (set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET for the bridge); the public feed does not include them."
+                    onChange={(e) => setState({ sort: asPostSort(e.target.value) })}
+                >
+                    {SORT_OPTIONS.map((o) => (
+                        // keep the current choice selectable even if counts vanish (e.g. after switching subreddit)
+                        <option key={o.value} value={o.value} disabled={sortNeedsCounts(o.value) && !countsAvailable && o.value !== sort}>
+                            {o.label}
+                        </option>
+                    ))}
+                </Select>
                 <Input
                     {...controlProps} w="150px" placeholder="Stream URL" aria-label="Stream URL"
                     title="SSE endpoint that emits Reddit posts. The dev/preview server provides the default; point elsewhere for a hosted deployment."
@@ -227,6 +253,11 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
             )}
 
             <Box flex={1} minH={0} overflowY="auto">
+                {sortNeedsCounts(sort) && posts.length > 0 && !countsAvailable && (
+                    <Text px={3} py={2} fontSize="xs" color={colors.warning}>
+                        This feed has no {sort === 'top' ? 'scores' : 'comment counts'} (Reddit's public feed omits them), so posts are shown newest first.
+                    </Text>
+                )}
                 {visible.length === 0 && hasTarget && !paused && !streamError && (
                     <Text p={4} fontSize="sm" color={colors.foreHalf}>Waiting for posts...</Text>
                 )}
