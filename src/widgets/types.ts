@@ -15,6 +15,8 @@ export const WIDGET_TYPE = {
   tradingView: 'tradingView',
   table: 'table',
   editor: 'editor',
+  graph: 'graph',
+  reddit: 'reddit',
 } as const;
 
 /**
@@ -66,4 +68,13 @@ export interface EditorWidgetExports {
   getContent: () => string;
   /** wKey of the table widget this editor sends results to, if any. */
   targetWKey?: string;
+}
+
+/**
+ * Published by the 3D graph explorer, so another widget can follow what the
+ * user has selected in the catalog (e.g. a table widget binding to a table node).
+ */
+export interface GraphWidgetExports {
+  selectedNodeId?: string;
+  selectedNode?: { id: string; label: string; kind: string; meta?: Record<string, unknown> };
 }

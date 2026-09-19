@@ -110,6 +110,12 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         panelActionsRef.current.delete(key);
     }, []);
 
+    // The dockview layout is gone once the board unmounts (e.g. navigating to the
+    // landing page), so the widget registry must go with it: left behind, it would
+    // list widgets that no longer exist - counting toward maxNo, taking names, and
+    // showing up as link targets - the next time the board is opened.
+    React.useEffect(() => () => resetWidgetStore(), [resetWidgetStore]);
+
     const toggleMenuOpen = () => setMenuOpen(!menuOpen);
     const userAlert  = useUserAlert()
 
@@ -147,10 +153,11 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             },
         ];
         if (actions) {
-            items.push(
-                { label: 'Settings', action: actions.openSettings },
-                { label: 'Save As', action: actions.openSaveAs },
-            );
+            // Widgets that keep their controls in their own toolbar declare no settings; an
+            // empty Settings modal is just noise.
+            const hasSettings = ((panel.params as WidgetPanelParams | undefined)?.settingsConfig?.length ?? 0) > 0;
+            if (hasSettings) items.push({ label: 'Settings', action: actions.openSettings });
+            items.push({ label: 'Save As', action: actions.openSaveAs });
         }
         items.push(
             'separator',
@@ -371,6 +378,10 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
                         components={dockviewComponents}
                         tabComponents={dockviewTabComponents}
                         leftHeaderActionsComponent={GroupHeaderActions}
+                        // A blank static page (public/popout.html). dockview's default is
+                        // "/popout.html" too, but resolved against the site root, which breaks
+                        // when the app is served from a sub-path.
+                        popoutUrl={`${import.meta.env.BASE_URL}popout.html`}
                         getTabContextMenuItems={getTabContextMenuItems}
                         onReady={onReady}
                     />

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Divider, Heading, HStack, IconButton, Tooltip } from '@chakra-ui/react';
+import { useLocation } from 'wouter';
 import { ColorModeSwitcher } from '../components/ColorModeSwitcher';
 import Appearance from '../components/Appearance';
 import { MdMenu, MdHelpOutline, MdSettings, MdAdd } from 'react-icons/md';
@@ -13,10 +14,10 @@ import { useShallow } from 'zustand/react/shallow';
 import type { SerializedDockview } from 'dockview-react';
 import { BaseWidgetDict, WidgetDict } from '../interfaces';
 import useUserAlert from '../hooks/useUserAlert';
-import useKvStore from '../hooks/useKvStore';
 import { getStorage } from '../store/storage';
 import SaveAsModal from '../modals/SaveAsModal';
-import IntroModal, { INTRO_VERSION, INTRO_SEEN_KEY } from '../intro/IntroModal';
+import IntroModal from '../intro/IntroModal';
+import useIntro from '../intro/useIntro';
 
 interface NavHeaderProps {
   toggleNav: (menuOpen: boolean) => void;
@@ -51,25 +52,8 @@ const NavHeader: React.FC<NavHeaderProps> = ({
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [allBoardKeys, setAllBoardKeys] = React.useState<string[]>([]);
   const [savedToolKeys, setSavedToolKeys] = React.useState<string[]>([]);
-  const { get: getPref, set: setPref } = useKvStore('prefs');
-  const [introOpen, setIntroOpen] = React.useState(false);
-
-  // First-run check: useKvStore().get() returns JSON.parse(... || "{}"), so a
-  // key that was never set comes back as {} rather than undefined - guard with
-  // a typeof check rather than trusting the value's shape. Reading a value and
-  // calling setState with it is idempotent, so this is safe under React 18
-  // StrictMode's double-invoked effects.
-  React.useEffect(() => {
-    const seenVersion = getPref(INTRO_SEEN_KEY);
-    if (typeof seenVersion !== 'number' || seenVersion < INTRO_VERSION) {
-      setIntroOpen(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const dismissIntro = (dontShowAgain: boolean) => {
-    if (dontShowAgain) setPref(INTRO_SEEN_KEY, INTRO_VERSION);
-  };
+  const [, navigate] = useLocation();
+  const { open: introOpen, setOpen: setIntroOpen, dismiss: dismissIntro } = useIntro(true);
 
   const widgetStates = useWidgetStore(useShallow((s) => s.states));
   const userAlert = useUserAlert();
@@ -194,6 +178,12 @@ const NavHeader: React.FC<NavHeaderProps> = ({
     markSaved();
   };
 
+  // Leaving the board discards it (the dockview layout is not kept), so ask first if there is unsaved work.
+  const goHome = () => {
+    if (dirty && !window.confirm('Leave the board? Unsaved changes will be lost.')) return;
+    navigate('/');
+  };
+
   const iconBtn = {
     variant: 'ghost' as const,
     size: 'sm' as const,
@@ -220,9 +210,22 @@ const NavHeader: React.FC<NavHeaderProps> = ({
 
       <HStack h="100%" w="100%" bg={colors.surface} spacing={3} px={3} justify="space-between">
         <HStack spacing={3} minW={0} flexShrink={0}>
-          <Heading fontSize={16} fontWeight={600} color={colors.fore} letterSpacing="-0.01em" flexShrink={0}>
-            {appName}
-          </Heading>
+          <Tooltip label="Home" openDelay={400}>
+            <Heading
+              fontSize={16}
+              fontWeight={600}
+              color={colors.fore}
+              letterSpacing="-0.01em"
+              flexShrink={0}
+              cursor="pointer"
+              role="link"
+              tabIndex={0}
+              onClick={goHome}
+              onKeyDown={(e) => { if (e.key === 'Enter') goHome(); }}
+            >
+              {appName}
+            </Heading>
+          </Tooltip>
           <Divider orientation="vertical" h="20px" borderColor={colors.border} />
           <BoardMenu
             boards={allBoardKeys}

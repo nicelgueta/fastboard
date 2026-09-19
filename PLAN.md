@@ -108,11 +108,11 @@ Pin these; do not "upgrade to latest" without re-checking peers.
 // Phase 8
 "react-force-graph-3d": "^1.29.1",
 
-// Phase 9 — R3F v9 requires React >=19, so the v8 line is mandatory while we stay on React 18.
-"three": "^0.169.0",
-"@types/three": "^0.169.0",
-"@react-three/fiber": "^8.18.0",     // peer: react >=18 <19
-"@react-three/drei": "^9.122.0",     // peer: @react-three/fiber ^8, three >=0.137
+// Phase 9 — implemented on plain three.js. R3F (v9 needs React >=19, v8 is the React 18 line) was tried and
+// dropped: its global JSX typings overflow TypeScript on Chakra components app-wide. See Phase 9.
+"three": "^0.186.0",          // one copy: 3d-force-graph needs >=0.179, so the app follows it
+"three-spritetext": "^1.10.0",  // graph node labels
+"@types/three": "^0.186.0",
 
 // Phase 2/9
 "wouter": "^3.11.0"                  // upgrade from the installed 2.12
@@ -763,7 +763,7 @@ throwing. Monaco is in its own lazy chunk.
 
 ## Phase 8 — 3D graph explorer
 
-**Depends on:** Phase 4.
+**Depends on:** Phase 4. **Status: implemented** (`src/widgets/graph/`; notes at the end of this phase).
 
 ### Goal
 Browse a data catalog as entities and relationships in 3D.
@@ -817,11 +817,29 @@ Loading a couple of CSVs into duckdb produces a navigable graph of database/sche
 Rotate, zoom, hover, click-to-detail and search all work. Runs at a usable frame rate on a
 mid-range laptop. Theme-aware background.
 
+### As built
+- `catalog.ts` (contracts), `DuckDbCatalogSource.ts` (reference source), `graphModel.ts` (pure
+  depth/degree/search/merge logic), `GraphWidget.tsx`, `config.ts`. Registered as widget type `graph`.
+- `duckdb_schemas()` flags the user's own `main` schema as `internal`, so the schema query keeps schemas
+  by *database* not being internal instead. The first draft used `WHERE NOT internal` and produced an
+  empty graph; `catalogQueries.test.ts` runs the queries on real duckdb-wasm to guard it.
+- `3d-force-graph` needs `three >=0.179`, so the app moved from 0.169 to 0.186 (the 0.169 pin only existed
+  for R3F v8, since dropped). This keeps a single three.js in the tree, which the node labels rely on:
+  `three-spritetext` sprites must come from the same three as the renderer that draws them.
+- Nodes are labelled with sprites; large graphs label only what stays readable (`shouldLabel`), and the
+  toolbar has a Labels toggle. Columns are coloured by data-type family (`typeGroup`), with the semantic
+  hues reserved for types and the accent/neutral tones for database/schema/table.
+- The graph reloads when a table widget binds a table, and has a Refresh button for tables created from SQL.
+  `CatalogSource.expand` is supported by the widget but the duckdb source does not implement it (the whole
+  catalog is loaded up front; depth is capped with the toolbar selector instead).
+- Only the duckdb catalog is shown; qpl-engine tables are not listed.
+
 ---
 
 ## Phase 9 — Landing page with three.js background
 
-**Depends on:** Phase 0 (Phase 1 for theming).
+**Depends on:** Phase 0 (Phase 1 for theming). **Status: implemented** (`src/landing/`, `src/App.tsx`;
+notes at the end of this phase).
 
 ### Goal
 A front page for the tool with a stylish 3D background: cartoonish flying shapes on a dark
@@ -889,6 +907,24 @@ Content: product name, one-line description, a primary "Open dashboard" → `/bo
 Landing loads in well under a second with three.js in its own lazy chunk. Shapes visibly and
 smoothly dodge the cursor and settle back. Smooth on a mid-range laptop. Reduced-motion and
 no-WebGL paths both degrade gracefully. "Open dashboard" routes to a working board.
+
+### As built - and one deviation from the stack above
+- **Plain three.js, not R3F/drei.** With `@react-three/fiber` in the TypeScript program its ~180 added
+  global JSX element names make Chakra's polymorphic `as` typing overflow (TS2590) on every component that
+  spreads `as`-carrying props - `Input`, `MultiSelect`, `NumberInput`, `ColorModeSwitcher`... and which
+  ones fail moves around as files change, so suppressing them is whack-a-mole. The scene is one loop over
+  instanced meshes, so `shapeField.ts` drives three directly and `Scene.tsx` is a thin React shell.
+  Everything else in this section holds: React 18, `three ^0.186`, toon shading with a stepped gradient
+  map, inverted-hull outlines (a scaled back-face copy, no postprocessing), one instanced mesh per shape
+  kind, cursor repulsion with velocity + damping + a spring home, no React state per frame, pause on a
+  hidden tab, still frame under `prefers-reduced-motion`, CSS gradient when WebGL is missing or the chunk
+  fails. The pointer is read from a window listener.
+- `physics.ts` holds the motion as pure functions (unit tested); `shapeField.test.ts` runs the real scene
+  code against a stubbed renderer and asserts on the actual instance matrices.
+- Routing is wouter 3: `/` landing, `/board` lazy board, anything else redirects to `/`. Providers moved up
+  to `Providers.tsx` so both routes share one theme. Leaving the board resets the widget store, since the
+  dockview layout does not survive the route change. The board header's app name links home.
+- A static host needs an SPA fallback so a direct hit on `/board` serves `index.html`.
 
 ---
 

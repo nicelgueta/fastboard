@@ -1,8 +1,9 @@
 import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
+import redditStream from './vite-plugins/redditStream.ts';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), redditStream()],
   // duckdb-wasm ships pre-bundled ESM workers; excluding it stops esbuild
   // from mangling the worker entry points during dep optimization. qpl's wasm
   // bundle is loaded by explicit URL (src/data/qpl/runtime.ts), which the
