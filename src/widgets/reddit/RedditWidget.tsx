@@ -31,6 +31,7 @@ import {
     type PostSort,
     type RedditPost,
 } from './posts';
+import { redditQueue } from './redditQueue';
 
 /** Persisted with the widget's state (and so with saved boards); edited from the toolbar. */
 interface RedditPersistedState {
@@ -43,6 +44,7 @@ interface RedditPersistedState {
 }
 
 type Status = 'connecting' | 'live' | 'reconnecting';
+type Source = 'server' | 'browser';
 
 const isImageUrl = (u: string) => /\.(png|jpe?g|gif|webp)(\?|$)/i.test(u);
 
@@ -94,6 +96,7 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
     // Ids that arrived after the initial snapshot - highlighted as "new".
     const [liveIds, setLiveIds] = React.useState<Set<string>>(() => new Set());
     const [status, setStatus] = React.useState<Status>('connecting');
+    const [source, setSource] = React.useState<Source>('server');
     const [streamError, setStreamError] = React.useState<string>();
     const [paused, setPaused] = React.useState(false);
     const [preview, setPreview] = React.useState<RedditPost>();
@@ -116,25 +119,49 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
         if (!hasTarget || paused) return;
         setStatus('connecting');
 
-        const es = new EventSource(buildStreamUrl(streamUrl, { subreddit, query }));
-        // Each message is the current listing, sent when its newest post changes. Anything
-        // not seen before after the first one is "new"; EventSource reconnects on its own
-        // and the server then resends the listing, which mergePosts dedupes.
+        // Each batch is the current listing, sent when its newest post changes. Anything not seen
+        // before after the first one is "new"; on a reconnect the listing is resent, which mergePosts dedupes.
         const known = new Set<string>();
-        es.onopen = () => setStatus('live');
-        es.onerror = () => setStatus(es.readyState === EventSource.CLOSED ? 'connecting' : 'reconnecting');
-        es.onmessage = (e) => {
-            const incoming = parseListing({ data: { children: JSON.parse(e.data).data } });
+        const receive = (incoming: RedditPost[]) => {
             const fresh = incoming.filter((p) => !known.has(p.id));
             if (known.size > 0) setLiveIds((prev) => new Set([...prev, ...fresh.map((p) => p.id)]));
             fresh.forEach((p) => known.add(p.id));
             setPosts((prev) => mergePosts(prev, incoming, maxRef.current));
             setStreamError(undefined);
         };
+
+        // Without a usable server stream (none deployed, or no Reddit credentials on it) the
+        // EventSource is refused outright and closes; poll Reddit from the browser instead, through
+        // the shared queue so widgets don't trip Reddit's rate limits against each other.
+        let stopDirect: (() => void) | undefined;
+        const goDirect = () => {
+            setSource('browser');
+            setStatus('connecting');
+            stopDirect = redditQueue.subscribe({ subreddit, query }, {
+                onPosts: (incoming) => {
+                    setStatus('live');
+                    receive(incoming);
+                },
+                onError: setStreamError,
+            });
+        };
+
+        setSource('server');
+        const es = new EventSource(buildStreamUrl(streamUrl, { subreddit, query }));
+        es.onopen = () => setStatus('live');
+        es.onerror = () => {
+            if (es.readyState !== EventSource.CLOSED) return setStatus('reconnecting');
+            es.close();
+            if (!stopDirect) goDirect();
+        };
+        es.onmessage = (e) => receive(parseListing({ data: { children: JSON.parse(e.data).data } }));
         es.addEventListener(STREAM_EVENTS.streamError, (e) => {
             setStreamError(JSON.parse((e as MessageEvent).data).message);
         });
-        return () => es.close();
+        return () => {
+            es.close();
+            stopDirect?.();
+        };
     }, [subreddit, query, streamUrl, paused, hasTarget]);
 
     const allowed = React.useMemo(() => posts.filter((p) => showNsfw || !p.over18), [posts, showNsfw]);
@@ -224,7 +251,7 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
                 </Select>
                 <Input
                     {...controlProps} w="150px" placeholder="Stream URL" aria-label="Stream URL"
-                    title="SSE endpoint that emits Reddit listings. fastboard-server provides the default."
+                    title="SSE endpoint that emits Reddit listings. fastboard-server provides the default; if it is unavailable or has no Reddit credentials, the widget polls Reddit directly from the browser."
                     value={streamUrlDraft} isDisabled={isStatic}
                     onChange={(e) => setStreamUrlDraft(e.target.value)}
                     onBlur={() => commitText('streamUrl', streamUrlDraft.trim() || DEFAULT_STREAM_URL, streamUrl)}
@@ -241,7 +268,7 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
                 </FBButton>
                 <Box flex={1} />
                 {hasTarget && !paused ? (
-                    <ConnectionBadge connected={status === 'live'} label={status === 'live' ? (subreddit ? `r/${subreddit}` : 'search') : undefined} />
+                    <ConnectionBadge connected={status === 'live'} label={status === 'live' ? `${subreddit ? `r/${subreddit}` : 'search'}${source === 'browser' ? ' (direct)' : ''}` : undefined} />
                 ) : (
                     <Text fontSize="xs" color={colors.foreHalf}>{paused ? 'Paused' : 'Enter a subreddit or search'}</Text>
                 )}

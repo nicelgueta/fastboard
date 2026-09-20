@@ -3,9 +3,10 @@
 //! SSE router: poll Reddit's search.json and push the listing whenever the newest
 //! post changes.
 //!
-//! Reddit answers many unauthenticated .json requests with 403. Set REDDIT_CLIENT_ID and
-//! REDDIT_CLIENT_SECRET (a "script" app from reddit.com/prefs/apps) to poll oauth.reddit.com
-//! instead, which is not blocked.
+//! Reddit answers many unauthenticated .json requests with 403, so the stream needs
+//! REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET (a "script" app from reddit.com/prefs/apps) to
+//! poll oauth.reddit.com. Without them /sse/redditSearch answers 501, which the widget takes as
+//! its cue to poll Reddit from the browser instead.
 //!
 //! Config (environment): PORT (8080), FASTBOARD_DIST (../dist, i.e. the repo's build output
 //! when run from server/), REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET.
@@ -43,6 +44,8 @@ const USER_AGENT: &str = "Ubuntu(20.04):test-app:v0.1";
 struct AppState {
     http: reqwest::Client,
     api_base: Arc<str>,
+    /// Credentials are set, or REDDIT_BASE_URL points at a stub. Without either the stream is not served.
+    reddit_ready: bool,
     token: Arc<TokenSource>,
 }
 
@@ -112,6 +115,7 @@ async fn main() {
         ),
     };
     let oauth = creds.is_some();
+    let reddit_ready = oauth || non_blank("REDDIT_BASE_URL").is_some();
 
     let state = AppState {
         http: reqwest::Client::builder()
@@ -119,6 +123,7 @@ async fn main() {
             .build()
             .expect("build http client"),
         api_base: api_base.into(),
+        reddit_ready,
         token: Arc::new(TokenSource { auth_base, creds, cache: Mutex::new(None) }),
     };
 
@@ -135,7 +140,7 @@ async fn main() {
         if oauth {
             "Reddit: OAuth"
         } else {
-            "Reddit: unauthenticated (set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET if it answers 403)"
+            "Reddit: no credentials, so /sse/redditSearch answers 501 and the widget polls Reddit from the browser (set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET to stream from here)"
         }
     );
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", port))
@@ -151,6 +156,9 @@ fn non_blank(key: &str) -> Option<String> {
 /// `?search_term=..&subreddit=..&period=..&limit=..&sort=..`. Only `search_term` or
 /// `subreddit` is required; with no search term it follows the subreddit's /new.
 async fn reddit_search(State(state): State<AppState>, Query(params): Query<HashMap<String, String>>) -> Response {
+    if !state.reddit_ready {
+        return (StatusCode::NOT_IMPLEMENTED, "Reddit credentials are not configured on this server").into_response();
+    }
     let param = |k: &str| params.get(k).map(String::as_str).filter(|v| !v.is_empty());
     let (term, subreddit) = (param("search_term"), param("subreddit"));
     match (term, subreddit) {

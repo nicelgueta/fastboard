@@ -6,7 +6,7 @@ export PATH := $(HOME)/.cargo/bin:$(PATH)
 -include .env
 export REDDIT_CLIENT_ID REDDIT_CLIENT_SECRET
 
-.PHONY: install build build-web build-server run run-server dev dev-web dev-server test
+.PHONY: install build build-web build-server build-site run run-server dev dev-web dev-server test
 
 install:
 	yarn install
@@ -19,6 +19,20 @@ build-web:
 
 build-server:
 	cd server && cargo build --release
+
+# Static, front-end only build for GitHub Pages: no server, so the Reddit widget's stream is unavailable.
+# Emits into the site repo under SITE_PATH (served at https://<user>.github.io/<SITE_PATH>/).
+SITE_REPO ?= ../nicelgueta.github.io
+SITE_PATH ?= fastboard
+SITE_DIR  := $(SITE_REPO)/$(SITE_PATH)
+
+build-site:
+	rm -rf "$(SITE_DIR)"
+	@test -n "$(SITE_PATH)" && test -d "$(SITE_REPO)" || { echo "SITE_REPO ($(SITE_REPO)) must exist and SITE_PATH must be non-empty"; exit 1; }
+	yarn tsc --noEmit
+	yarn vite build --base=/$(SITE_PATH)/ --outDir $(abspath $(SITE_DIR)) --emptyOutDir
+	# GitHub Pages has no SPA fallback: give the /board route its own entry point.
+	mkdir -p $(SITE_DIR)/board && cp $(SITE_DIR)/index.html $(SITE_DIR)/board/index.html
 
 run: build-web run-server
 

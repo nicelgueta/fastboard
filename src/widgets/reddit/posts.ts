@@ -1,4 +1,5 @@
-// Pure helpers for the Reddit widget. The stream it reads is served by server/ (Rust).
+// Pure helpers for the Reddit widget. Its posts come from server/ (Rust) over SSE, or, when that
+// isn't available, straight from Reddit via redditQueue.ts.
 
 export interface RedditPost {
     /** Reddit fullname, e.g. "t3_abc123". Unique - used as the dedupe key. */
@@ -75,6 +76,103 @@ export const buildStreamUrl = (base: string, target: StreamTarget): string => {
     if (target.query) params.set('search_term', target.query);
     params.set('limit', String(LISTING_LIMIT));
     return `${base}${base.includes('?') ? '&' : '?'}${params}`;
+};
+
+/**
+ * Where to read a target's newest posts on Reddit: a path (no extension) and
+ * its query params. Callers append `.json` or `.rss` (or use the path as-is on
+ * oauth.reddit.com). All values are URL-encoded by URLSearchParams.
+ */
+export const upstreamRequest = (target: StreamTarget, limit: number): { path: string; params: URLSearchParams } => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (!target.query) return { path: `/r/${target.subreddit}/new`, params };
+    params.set('q', target.query);
+    params.set('sort', 'new');
+    if (target.subreddit) params.set('restrict_sr', '1');
+    return { path: target.subreddit ? `/r/${target.subreddit}/search` : '/search', params };
+};
+
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+const decodeEntities = (s: string): string =>
+    s.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, dec, hex, name) => {
+        if (dec) return String.fromCodePoint(Number(dec));
+        if (hex) return String.fromCodePoint(parseInt(hex, 16));
+        return ENTITIES[name.toLowerCase()] ?? m;
+    });
+
+const tagText = (xml: string, tag: string): string | undefined => {
+    const m = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`).exec(xml);
+    return m ? decodeEntities(m[1]) : undefined;
+};
+
+/**
+ * The small HTML subset Reddit renders post bodies with (paragraphs, headings,
+ * lists, emphasis, links, code, quotes, tables) -> markdown. Anything else is
+ * stripped to its text. Entities are decoded last so escaped text like
+ * "&lt;div&gt;" survives the tag strip.
+ */
+export const htmlToMarkdown = (html: string): string => {
+    const md = html
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<pre[^>]*>\s*(?:<code[^>]*>)?([\s\S]*?)(?:<\/code>)?\s*<\/pre>/gi, (_, code) => `\n\n\`\`\`\n${code.replace(/<[^>]+>/g, '')}\n\`\`\`\n\n`)
+        .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
+        .replace(/<a\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
+        .replace(/<(?:strong|b)>([\s\S]*?)<\/(?:strong|b)>/gi, '**$1**')
+        .replace(/<(?:em|i)>([\s\S]*?)<\/(?:em|i)>/gi, '*$1*')
+        .replace(/<(?:del|s)>([\s\S]*?)<\/(?:del|s)>/gi, '~~$1~~')
+        .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, n, t) => `\n\n${'#'.repeat(Number(n))} ${t}\n\n`)
+        .replace(/<li[^>]*>/gi, '\n- ')
+        .replace(/<blockquote[^>]*>/gi, '\n\n> ')
+        .replace(/<hr\s*\/?>/gi, '\n\n---\n\n')
+        .replace(/<br\s*\/?>/gi, '  \n')
+        .replace(/<\/(?:p|ul|ol|blockquote|div)>/gi, '\n\n')
+        .replace(/<\/tr>/gi, '\n')
+        .replace(/<\/t[dh]>/gi, ' | ')
+        .replace(/<[^>]+>/g, '');
+    return decodeEntities(md).replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+};
+
+/**
+ * Reddit's Atom feed (/r/<sub>/new.rss) -> posts, newest first (the feed's own
+ * order). We use Atom because Reddit answers unauthenticated .json listing
+ * requests with 403, while the feed is still served. The trade-off is that
+ * Atom carries no score, comment count, flair or NSFW flag, but does include the
+ * post body (as HTML, converted here) and, for link posts, a thumbnail. Entries missing an
+ * id or title are skipped; anything that isn't a feed yields [].
+ */
+export const parseAtomFeed = (xml: string): RedditPost[] => {
+    const posts: RedditPost[] = [];
+    for (const m of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
+        const e = m[1];
+        const id = tagText(e, 'id');
+        const title = tagText(e, 'title');
+        if (!id || !title) continue;
+        const permalink = /<link\s+href="([^"]+)"/.exec(e)?.[1];
+        const content = tagText(e, 'content') ?? '';
+        // Link posts carry their outbound URL in the [link] anchor; self posts point back at the thread.
+        const outboundRaw = /<a href="([^"]+)">\[link\]<\/a>/.exec(content)?.[1];
+        // The HTML inside <content> is itself escaped, so the href needs a second decode.
+        const outbound = outboundRaw && decodeEntities(outboundRaw);
+        const published = Date.parse(tagText(e, 'published') ?? tagText(e, 'updated') ?? '');
+        const link = decodeEntities(permalink ?? '');
+        // Self posts wrap their body in <div class="md">; link posts have no such block.
+        const body = /<div class="md">([\s\S]*?)<\/div>\s*<!-- SC_ON -->/.exec(content)?.[1];
+        const thumbnail = /<media:thumbnail\s+url="([^"]+)"/.exec(e)?.[1];
+        posts.push({
+            id,
+            title: title.trim(),
+            author: (tagText(e, 'name') ?? '[deleted]').replace(/^\/u\//, '').trim(),
+            subreddit: /<category term="([^"]*)"/.exec(e)?.[1] ?? '',
+            permalink: link,
+            url: outbound ?? link,
+            createdUtc: Number.isNaN(published) ? 0 : Math.floor(published / 1000),
+            isSelf: !outbound || outbound === link,
+            thumbnail: thumbnail ? decodeEntities(thumbnail) : undefined,
+            selftext: (body && htmlToMarkdown(body).slice(0, MAX_SELFTEXT)) || undefined,
+        });
+    }
+    return posts;
 };
 
 interface ListingChild {

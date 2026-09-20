@@ -275,7 +275,7 @@ cd server && cargo run --release             # http://127.0.0.1:8080; PORT and F
 
 For `yarn dev`, run the server alongside it: Vite proxies `/sse` to port 8080. Building needs a Rust toolchain (via [rustup](https://rustup.rs/)).
 
-Reddit answers many unauthenticated `.json` requests with 403 (the widget then shows "Reddit responded 403"). To get past it, give the server Reddit OAuth credentials:
+Reddit answers many unauthenticated `.json` requests with 403, so the server only serves the stream when it has Reddit OAuth credentials. Without them (or with no server at all, e.g. a static `make build-site` deployment) `/sse/redditSearch` is unavailable and the widget falls back to polling Reddit straight from the browser: `.json` first, then the Atom feed if that is refused (no scores, comment counts or NSFW flag). All of those requests, from every Reddit widget on the board, go through one queue (`src/widgets/reddit/redditQueue.ts`) that makes a single request at a time, spaced out, and shares results between widgets following the same target. The badge reads "(direct)" in this mode. To have the server do the polling instead, give it credentials:
 
 1. Create an app at https://www.reddit.com/prefs/apps: type **script**, any name, redirect URI `http://localhost`. The client id is the string under the app name; the secret is labelled "secret".
 2. Put them in a `.env` file in the repo root (gitignored, no quotes), or export them in your shell:
@@ -285,4 +285,4 @@ Reddit answers many unauthenticated `.json` requests with 403 (the widget then s
    REDDIT_CLIENT_SECRET=your_secret
    ```
 
-3. `make run` (or `make dev`). The server logs `Reddit: OAuth` on start and polls `oauth.reddit.com` instead.
+3. `make run` (or `make dev`). The server logs `Reddit: OAuth` on start and polls `oauth.reddit.com`.
