@@ -4,12 +4,21 @@
  * the real interpreter.
  */
 
+/** What the interpreter has bound at the top level: the names completion offers. */
+export interface QplSymbols {
+    /** Tables and lazy plans; `columns`/`rows` are absent for a lazy plan. */
+    tables: { name: string; columns?: string[]; rows?: number }[];
+    variables: string[];
+    functions: string[];
+}
+
 /** The slice of the wasm `Repl` (qpl.d.ts) that runs queries. */
 export interface SyncRepl {
     evalArrow(line: string): { output: string; error: string | null; ipc: Uint8Array | null };
     registerTable(name: string, ipc: Uint8Array): void;
     rowCount(name: string): number;
     wantsMore(src: string): boolean;
+    symbols(): QplSymbols;
 }
 
 export interface QplResult {

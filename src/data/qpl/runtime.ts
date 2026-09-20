@@ -14,6 +14,11 @@ export function getQplSession(): Promise<QplSession> {
     return Promise.resolve(session);
 }
 
+/** Names bound in the shared interpreter right now, for editor completion. */
+export async function getQplSymbols() {
+    return (await getQplSession()).symbols();
+}
+
 /** Monaco language setup for qpl - see qplLangConfig in qpl.d.ts. */
 export async function getQplLangConfig() {
     return (await getQplSession()).langConfig() as Promise<any>;

@@ -43,6 +43,8 @@ export function createHandler(load: () => Promise<LoadedQpl>) {
                     return { id: req.id, ok: true, value: runStatements(repl, req.src) };
                 case 'langConfig':
                     return { id: req.id, ok: true, value: langConfig() };
+                case 'symbols':
+                    return { id: req.id, ok: true, value: repl.symbols() };
             }
         } catch (e) {
             const message = e instanceof Error ? e.message : String(e);

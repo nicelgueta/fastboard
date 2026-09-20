@@ -29,6 +29,9 @@ class FakeEngine implements QplEngine {
     async langConfig() {
         return { id: 'qpl' };
     }
+    async symbols() {
+        return { tables: [], variables: [], functions: [] };
+    }
     dispose() {
         this.disposed = true;
     }

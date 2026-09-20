@@ -123,6 +123,16 @@ describe.skipIf(!built)('qpl wasm', () => {
         expect(await session.rowCount('csvt')).toBe(3);
     });
 
+    it('symbols lists what the session has bound', async () => {
+        const r = await session.run('symvar: 5\nsymfn: {[x] x + 1}\nsymtab: select sym, price from mixed');
+        expect(r.error).toBeNull();
+        const s = await session.symbols();
+        expect(s.variables).toContain('symvar');
+        expect(s.functions).toContain('symfn');
+        expect(s.tables.find((t) => t.name === 'mixed')?.columns).toContain('price');
+        expect(s.tables.find((t) => t.name === 'symtab')?.columns).toEqual(['sym', 'price']);
+    });
+
     it('the built-in demo tables load', async () => {
         const qpl = await import('qpl');
         const repl = new qpl.Repl();

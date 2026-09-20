@@ -1,7 +1,7 @@
 import { QplCrashed, type QplEngine } from './WorkerEngine';
-import type { QplResult } from './runner';
+import type { QplResult, QplSymbols } from './runner';
 
-export type { QplResult } from './runner';
+export type { QplResult, QplSymbols } from './runner';
 
 const RESTART_NOTE =
     'The qpl engine crashed and was restarted. Tables you uploaded are back; variables defined in queries are gone.';
@@ -49,6 +49,11 @@ export class QplSession {
     /** Monaco language setup - see qplLangConfig in qpl.d.ts. */
     langConfig(): Promise<unknown> {
         return this.guard((e) => e.langConfig());
+    }
+
+    /** Tables, variables and functions bound right now - what completion offers. */
+    symbols(): Promise<QplSymbols> {
+        return this.guard((e) => e.symbols());
     }
 
     /** Run against the engine; on a crash, replace it and try once more. */

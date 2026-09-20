@@ -33,6 +33,7 @@ const fake = (script: (line: string) => ReturnType<SyncRepl['evalArrow']>): Sync
     registerTable: () => {},
     rowCount: () => 0,
     wantsMore,
+    symbols: () => ({ tables: [], variables: [], functions: [] }),
 });
 
 describe('runStatements', () => {

@@ -10,6 +10,7 @@ const fakeRepl = (over: Partial<SyncRepl> = {}): SyncRepl => ({
     registerTable: () => {},
     rowCount: () => 7,
     wantsMore: () => false,
+    symbols: () => ({ tables: [], variables: ['n'], functions: [] }),
     ...over,
 });
 const loader = (repl: SyncRepl): (() => Promise<LoadedQpl>) => async () => ({ repl, langConfig: () => ({ id: 'qpl', re: /x/ }) });
@@ -24,6 +25,7 @@ describe('WorkerEngine over the worker protocol', () => {
         expect((await e.run('ab')).ipc).toEqual(new Uint8Array([2]));
         // a RegExp in the language config must survive structured cloning
         expect(await e.langConfig()).toEqual({ id: 'qpl', re: /x/ });
+        expect(await e.symbols()).toEqual({ tables: [], variables: ['n'], functions: [] });
     });
 
     it('does not detach the bytes the caller passed in', async () => {

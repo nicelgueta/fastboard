@@ -1,5 +1,5 @@
 import type { QplMethods, QplRequest, QplResponse } from './protocol';
-import type { QplResult } from './runner';
+import type { QplResult, QplSymbols } from './runner';
 
 /** The bit of a DOM `Worker` this uses, so tests can supply a stand-in. */
 export interface WorkerLike {
@@ -29,6 +29,7 @@ export interface QplEngine {
     evalStatement(line: string): Promise<QplResult>;
     run(src: string): Promise<QplResult>;
     langConfig(): Promise<unknown>;
+    symbols(): Promise<QplSymbols>;
     dispose(): void;
 }
 
@@ -87,6 +88,9 @@ export class WorkerEngine implements QplEngine {
     }
     langConfig() {
         return this.call('langConfig', {});
+    }
+    symbols() {
+        return this.call('symbols', {});
     }
 
     dispose(): void {

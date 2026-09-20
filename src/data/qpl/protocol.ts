@@ -1,4 +1,4 @@
-import type { QplResult } from './runner';
+import type { QplResult, QplSymbols } from './runner';
 
 /**
  * Messages between the main thread (WorkerEngine) and the qpl worker. Every
@@ -10,6 +10,7 @@ export type QplRequest = { id: number } & (
     | { method: 'evalStatement'; line: string }
     | { method: 'run'; src: string }
     | { method: 'langConfig' }
+    | { method: 'symbols' }
 );
 
 export type QplResponse = { id: number } & (
@@ -25,4 +26,5 @@ export interface QplMethods {
     evalStatement: QplResult;
     run: QplResult;
     langConfig: unknown;
+    symbols: QplSymbols;
 }
