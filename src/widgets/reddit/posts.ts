@@ -1,4 +1,4 @@
-// Pure helpers for the Reddit widget. The stream it reads is served by server/ (Haskell).
+// Pure helpers for the Reddit widget. The stream it reads is served by server/ (Rust).
 
 export interface RedditPost {
     /** Reddit fullname, e.g. "t3_abc123". Unique - used as the dedupe key. */
@@ -27,7 +27,7 @@ export interface RedditPost {
 export const MAX_SELFTEXT = 8000;
 
 /**
- * The stream (server/Main.hs, GET /sse/redditSearch) sends an unnamed `message` event
+ * The stream (server/src/main.rs, GET /sse/redditSearch) sends an unnamed `message` event
  * whenever the newest post changes: `{ data: <Reddit listing children> }`, which
  * parseListing turns into posts. This is the one named event.
  */

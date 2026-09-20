@@ -1,5 +1,5 @@
-# cabal comes from ghcup, which non-login shells (and make) may not have on PATH.
-export PATH := $(HOME)/.ghcup/bin:$(PATH)
+# cargo comes from rustup, which non-login shells (and make) may not have on PATH.
+export PATH := $(HOME)/.cargo/bin:$(PATH)
 
 # Reddit OAuth credentials for the server, from an optional .env (KEY=value lines, no quotes)
 # or the environment. See the readme's Reddit section.
@@ -18,12 +18,12 @@ build-web:
 	yarn build
 
 build-server:
-	cd server && cabal build
+	cd server && cargo build --release
 
 run: build-web run-server
 
 run-server:
-	cd server && cabal run fastboard-server
+	cd server && cargo run --release
 
 # Development: Vite (hot reload) plus the server for the Reddit widget's stream (Vite proxies /sse to it).
 dev:

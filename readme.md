@@ -263,17 +263,17 @@ Then swap it in where `GraphWidget.tsx` creates its source (`new DuckDbCatalogSo
 
 ## Reddit widget and `server/`
 
-The Reddit Feed widget follows a subreddit (or a search) over SSE. Reddit has no push API, so `server/` is a small Haskell ([Scotty](https://hackage.haskell.org/package/scotty)) backend that does the polling. It is a port of the `RedditWrapper` and SSE router from [e3-utils](https://github.com/nicelgueta/e3-utils):
+The Reddit Feed widget follows a subreddit (or a search) over SSE. Reddit has no push API, so `server/` is a small Rust ([Axum](https://github.com/tokio-rs/axum)) backend that does the polling. It is a port of the `RedditWrapper` and SSE router from [e3-utils](https://github.com/nicelgueta/e3-utils):
 
 - `GET /sse/redditSearch?search_term=..&subreddit=..&period=..&limit=..&sort=..` polls Reddit's `search.json` every 2s (or `/r/<sub>/new.json` when there's no search term) and sends the listing whenever its newest post changes. A failed poll is sent as a `stream-error` event.
 - Everything else serves the built app from `dist/` (`/board` and other client routes get `index.html`).
 
 ```bash
 yarn build
-cd server && cabal run fastboard-server      # http://127.0.0.1:8080; PORT and FASTBOARD_DIST override
+cd server && cargo run --release             # http://127.0.0.1:8080; PORT and FASTBOARD_DIST override
 ```
 
-For `yarn dev`, run the server alongside it: Vite proxies `/sse` to port 8080. Building needs GHC and cabal (via [ghcup](https://www.haskell.org/ghcup/)) plus `libgmp-dev`.
+For `yarn dev`, run the server alongside it: Vite proxies `/sse` to port 8080. Building needs a Rust toolchain (via [rustup](https://rustup.rs/)).
 
 Reddit answers many unauthenticated `.json` requests with 403 (the widget then shows "Reddit responded 403"). To get past it, give the server Reddit OAuth credentials:
 

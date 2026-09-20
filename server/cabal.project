@@ -1,5 +1,0 @@
-packages: .
-
--- Build zlib (pulled in by wai-extra via scotty) from bundled C sources, so no libz-dev is needed.
-package zlib
-  flags: +bundled-c-zlib
