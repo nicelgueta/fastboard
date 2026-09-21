@@ -142,6 +142,11 @@ export const getStorage = (): StorageAdapter => {
         list: withFallback(remote.list, localAdapter.list),
         get: withFallback(remote.get, localAdapter.get),
         set: withFallback(remote.set, localAdapter.set),
-        remove: withFallback(remote.remove, localAdapter.remove),
+        // A save that fell back to local (backend down, or 404 with no such route) lives only
+        // there, and a 404 on DELETE counts as removed, so the local copy is always cleared too.
+        remove: async (collection, key) => {
+            await withFallback(remote.remove, localAdapter.remove)(collection, key);
+            await localAdapter.remove(collection, key);
+        },
     };
 };

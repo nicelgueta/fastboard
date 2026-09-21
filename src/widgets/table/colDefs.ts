@@ -7,16 +7,18 @@ import type { FieldType, TableSchema } from '../../data/types';
  * only needs ag-grid-community's types, which are type-only imports and
  * erased at build time - no runtime ag-grid dependency here).
  */
-export function fieldTypeToCellDataType(t: FieldType): 'text' | 'number' | 'boolean' | 'date' | 'dateString' {
+export function fieldTypeToCellDataType(t: FieldType): 'text' | 'number' | 'boolean' {
     switch (t) {
         case 'number':
         case 'integer':
             return 'number';
         case 'boolean':
             return 'boolean';
+        // decode.ts hands these over as formatted text ("2024-03-15 09:30:00"); ag-grid's
+        // own date types want Date objects or bare yyyy-mm-dd strings and would drop the time
         case 'date':
         case 'timestamp':
-            return 'dateString';
+            return 'text';
         default:
             return 'text';
     }

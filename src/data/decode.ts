@@ -44,7 +44,86 @@ export async function resultToRows(result: QueryResult): Promise<Record<string, 
 }
 
 export function tableToRows(table: arrow.Table): Record<string, unknown>[] {
-  return table.toArray().map((r) => normalizeRow(r.toJSON() as Record<string, unknown>));
+  const rows = table.toArray().map((r) => normalizeRow(r.toJSON() as Record<string, unknown>));
+  // Arrow's own decode of these is epoch millis (or a bare integer for a time of
+  // day), which a grid shows as a big number, so they are replaced with text.
+  for (const field of table.schema.fields) {
+    const col = table.getChild(field.name);
+    if (!col || !isTemporal(field.type)) continue;
+    const texts = temporalToText(col as arrow.Vector);
+    for (let i = 0; i < rows.length; i++) rows[i][field.name] = texts[i];
+  }
+  return rows;
+}
+
+const isTemporal = (t: arrow.DataType) =>
+  arrow.DataType.isDate(t) || arrow.DataType.isTimestamp(t) || arrow.DataType.isTime(t);
+
+const UNIT_DIGITS = [0, 3, 6, 9]; // arrow.TimeUnit: SECOND, MILLISECOND, MICROSECOND, NANOSECOND
+
+/**
+ * Text for each value of a date / timestamp / time column, read from the raw
+ * integers so microsecond and nanosecond timestamps keep their precision (Arrow
+ * JS would round them through a float of milliseconds). Dates are
+ * `YYYY-MM-DD`, timestamps `YYYY-MM-DD HH:MM:SS[.fff]` and times
+ * `HH:MM:SS[.fff]`, all UTC, with the fraction shown only when non-zero.
+ */
+export function temporalToText(col: arrow.Vector): (string | null)[] {
+  const type = col.type as arrow.DataType;
+  const isDate = arrow.DataType.isDate(type);
+  const isDay = isDate && (type as arrow.Date_).unit === arrow.DateUnit.DAY;
+  const digits = isDate ? 3 : UNIT_DIGITS[(type as arrow.Timestamp | arrow.Time).unit] ?? 0;
+
+  const out: (string | null)[] = [];
+  for (const data of col.data) {
+    // 64-bit types come as a BigInt64Array, except Date64 which is pairs of 32-bit words
+    const values = data.values as Int32Array | BigInt64Array;
+    const pairs = values instanceof Int32Array && isDate && !isDay;
+    for (let i = 0; i < data.length; i++) {
+      if (!data.getValid(i)) {
+        out.push(null);
+        continue;
+      }
+      const at = data.offset + i;
+      const raw = pairs
+        ? (BigInt(values[2 * at + 1]) << 32n) | BigInt((values as Int32Array)[2 * at] >>> 0)
+        : BigInt(values[at]);
+      out.push(
+        isDay ? isoDate(raw * 86_400n) : arrow.DataType.isTime(type) ? clock(raw, digits) : stamp(raw, digits, isDate),
+      );
+    }
+  }
+  return out;
+}
+
+const floorDiv = (a: bigint, b: bigint) => (a / b) - (a % b !== 0n && (a < 0n) !== (b < 0n) ? 1n : 0n);
+const pad = (n: number | bigint, w = 2) => String(n).padStart(w, '0');
+
+/** `YYYY-MM-DD` for whole seconds since the epoch. */
+function isoDate(secs: bigint): string {
+  return new Date(Number(secs) * 1000).toISOString().slice(0, 10);
+}
+
+/** `.fff` for the sub-second part `frac` of a value with `digits` places, trailing zeros dropped; '' when zero. */
+function fraction(frac: bigint, digits: number): string {
+  if (digits === 0 || frac === 0n) return '';
+  return '.' + pad(frac, digits).replace(/0+$/, '');
+}
+
+function stamp(v: bigint, digits: number, dateOnly: boolean): string {
+  const per = 10n ** BigInt(digits);
+  const secs = floorDiv(v, per);
+  const iso = new Date(Number(secs) * 1000).toISOString();
+  // a Date64 that is exactly midnight is a plain date
+  if (dateOnly && secs % 86_400n === 0n && v - secs * per === 0n) return iso.slice(0, 10);
+  return iso.slice(0, 10) + ' ' + iso.slice(11, 19) + fraction(v - secs * per, digits);
+}
+
+function clock(v: bigint, digits: number): string {
+  const per = 10n ** BigInt(digits);
+  const secs = floorDiv(v, per);
+  const s = Number(((secs % 86_400n) + 86_400n) % 86_400n);
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}${fraction(v - secs * per, digits)}`;
 }
 
 /**

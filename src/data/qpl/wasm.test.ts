@@ -133,6 +133,17 @@ describe.skipIf(!built)('qpl wasm', () => {
         expect(s.tables.find((t) => t.name === 'symtab')?.columns).toEqual(['sym', 'price']);
     });
 
+    it('dates and timestamps decode to readable text, not epoch numbers', async () => {
+        const rows = await resultToRows({
+            bytes: (await session.run('select day, ts_us from mixed')).ipc!,
+            format: 'arrow-ipc',
+            totalRows: 4,
+            schema: { name: 'q', fields: [] },
+        });
+        expect(rows[0]).toEqual({ day: '2024-03-15', ts_us: '2024-03-15 09:30:00.123456' });
+        expect(rows[1].ts_us).toBeNull();
+    });
+
     it('the built-in demo tables load', async () => {
         const qpl = await import('qpl');
         const repl = new qpl.Repl();

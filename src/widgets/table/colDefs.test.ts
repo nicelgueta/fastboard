@@ -12,9 +12,9 @@ describe('fieldTypeToCellDataType', () => {
         expect(fieldTypeToCellDataType('boolean')).toBe('boolean');
     });
 
-    it('maps date/timestamp to dateString', () => {
-        expect(fieldTypeToCellDataType('date')).toBe('dateString');
-        expect(fieldTypeToCellDataType('timestamp')).toBe('dateString');
+    it('maps date/timestamp to text, since they arrive pre-formatted', () => {
+        expect(fieldTypeToCellDataType('date')).toBe('text');
+        expect(fieldTypeToCellDataType('timestamp')).toBe('text');
     });
 
     it('falls back to text for string and categorical', () => {
