@@ -268,7 +268,19 @@ const RedditWidget: React.FC<WidgetElementProps> = ({ wKey, isStatic }) => {
                 </FBButton>
                 <Box flex={1} />
                 {hasTarget && !paused ? (
-                    <ConnectionBadge connected={status === 'live'} label={status === 'live' ? `${subreddit ? `r/${subreddit}` : 'search'}${source === 'browser' ? ' (direct)' : ''}` : undefined} />
+                    <ConnectionBadge
+                        connected={status === 'live'}
+                        label={status === 'live' ? `${subreddit ? `r/${subreddit}` : 'search'}${source === 'browser' ? ' (direct)' : ''}` : undefined}
+                        hint={
+                            status === 'live'
+                                ? source === 'browser'
+                                    ? 'Polling Reddit directly from the browser (no server credentials) and streaming new posts.'
+                                    : 'Streaming new posts live via the server.'
+                                : status === 'reconnecting'
+                                    ? 'Lost the stream - retrying.'
+                                    : 'Connecting to the stream...'
+                        }
+                    />
                 ) : (
                     <Text fontSize="xs" color={colors.foreHalf}>{paused ? 'Paused' : 'Enter a subreddit or search'}</Text>
                 )}

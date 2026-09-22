@@ -1,6 +1,7 @@
 import * as arrow from 'apache-arrow';
 import { getQplSession } from '../../data/qpl/runtime';
 import { arrowSchemaToTableSchema } from '../../data/decode';
+import { formatArrowTable } from './formatTable';
 import type { TableWidgetExports } from '../types';
 import type { RunSqlResult } from './runSql';
 
@@ -50,4 +51,24 @@ export async function runQplAgainstTarget(
         source,
     });
     return { totalRows: table.numRows, elapsedMs, output: result.output, returnedTable: true };
+}
+
+/**
+ * Raw mode: no target table widget is linked, so `src` runs in the shared
+ * interpreter exactly as it would in a local qpl REPL - a resulting table is
+ * printed as text (appended to whatever the statements printed) instead of
+ * being pushed anywhere.
+ */
+export async function runQplRaw(src: string): Promise<RunQplResult> {
+    const session = await getQplSession();
+    const start = performance.now();
+    const result = await session.run(src);
+    const elapsedMs = performance.now() - start;
+    if (result.error) throw new QplRunError(result.error, result.output);
+    if (!result.ipc) return { totalRows: 0, elapsedMs, output: result.output, returnedTable: false };
+
+    const table = arrow.tableFromIPC(result.ipc);
+    const printed = formatArrowTable(table);
+    const output = result.output ? `${result.output}\n${printed}` : printed;
+    return { totalRows: table.numRows, elapsedMs, output, returnedTable: true };
 }

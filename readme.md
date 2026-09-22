@@ -16,6 +16,8 @@ Table widgets and the code editor can run on either of two in-browser engines, p
 - **DuckDB** (duckdb-wasm): SQL. Uploads CSV, JSON and Parquet.
 - **qpl** (the [qpl](../qpl) interpreter compiled to wasm): the `qpl` editor language. Uploads CSV and Parquet, which are decoded in JS (papaparse, hyparquet) and handed to qpl as Arrow. It runs in a Web Worker. The table widget's Filter is not available for qpl tables; filter with a qpl query in the editor instead.
 
+A Code Editor's **Target table widget** picker is optional. With a target, `Run` pushes the result to that table as arrow-ipc. Without one, the editor runs in **raw mode**: the query goes straight to the engine, as if it were running locally on that engine's CLI, and the result prints as text in the Output zone instead - a box-drawn table for a SQL/qpl `select`, or whatever a qpl statement would print (a scalar, a list, a plan) for anything else. The connection badge reads `Raw output mode` (amber) in this state - a table link that breaks (its widget closes) drops back to raw mode too, rather than erroring.
+
 ### Setting up qpl
 
 FastBoard links the wasm build from a sibling checkout of the qpl repo (`"qpl": "link:../qpl/tools/wasm/pkg"` in package.json), so before `yarn install` / `yarn dev`:
@@ -117,7 +119,7 @@ export const widgetConfig: WidgetConfig = [
 ];
 ```
 
-Optionally add `counter: 'counter'` to `WIDGET_TYPE` in `src/widgets/types.ts` if other widgets will look it up by type. That is the whole job: the widget now appears in **Add tool**, can be dragged, docked, floated, renamed, locked, saved in boards and saved as a reusable tool.
+Optionally add `counter: 'counter'` to `WIDGET_TYPE` in `src/widgets/types.ts` if other widgets will look it up by type. That is the whole job: the widget now appears in **Add tool**, can be dragged, docked, floated, renamed, locked, saved in boards and saved as a reusable tool - and its tab's right-click menu gets a **Help** entry for free, showing this same `description` in a modal.
 
 ### Settings: declarative or in the widget
 

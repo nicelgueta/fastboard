@@ -11,7 +11,7 @@ export const DOCK_OPTIONS: { label: string; value: Dock }[] = [
     { label: 'Top', value: 'top' },
 ];
 
-export const DEFAULT_DOCK: Dock = 'bottom';
+export const DEFAULT_DOCK: Dock = 'right';
 
 /** Saved values come from a board file: anything unknown falls back to the default. */
 export function normalizeDock(value: unknown): Dock {

@@ -78,6 +78,7 @@ export const INTRO_STEPS: IntroStep[] = [
           <ListItem>Rename</ListItem>
           <ListItem>Settings</ListItem>
           <ListItem>Save As</ListItem>
+          <ListItem>Help (a short description of what the tool does)</ListItem>
           <ListItem>Lock / Unlock (disables the widget's controls and stops other tabs docking into it)</ListItem>
           <ListItem>Maximize</ListItem>
           <ListItem>Float</ListItem>
@@ -191,8 +192,14 @@ export const INTRO_STEPS: IntroStep[] = [
         <Text color={colors.fore}>
           While a query result is showing, the table says which editor produced it. Press{' '}
           <Code>Unlink</Code> on the table to go back to the original data. A table is linked to
-          one editor at a time, and if the linked table is closed the editor says so instead of
-          failing.
+          one editor at a time, and if the linked table is closed the editor drops back to raw
+          mode rather than erroring.
+        </Text>
+        <Text color={colors.fore}>
+          Picking a target table is optional. Without one (amber{' '}
+          <Code>Raw output mode</Code> in the connection badge), the query runs directly against
+          the engine, as if you had run it locally on its CLI, and the result prints as text in
+          the Output zone instead of going to a table.
         </Text>
       </VStack>
     ),

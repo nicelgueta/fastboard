@@ -5,6 +5,7 @@ import useAppColors from '../hooks/useAppColors';
 import { stopPropagation } from '../components/common';
 import SettingsModal from '../modals/SettingsModal';
 import SaveAsModal from '../modals/SaveAsModal';
+import HelpModal from '../modals/HelpModal';
 import { usePanelContext } from './PanelContext';
 import WidgetErrorBoundary from './WidgetErrorBoundary';
 import { WidgetPanelParams, getDefaultSettings } from './types';
@@ -17,11 +18,17 @@ import { WidgetPanelParams, getDefaultSettings } from './types';
 const WidgetPanel: React.FC<IDockviewPanelProps<WidgetPanelParams>> = (props) => {
     const { widgetType, name, settingsConfig } = props.params;
     const wKey = props.api.id;
-    const { widgetComponentMapping, saveWidgetSettings, registerPanelActions, unregisterPanelActions } = usePanelContext();
+    const { widgetComponentMapping, widgetConfig, saveWidgetSettings, registerPanelActions, unregisterPanelActions } = usePanelContext();
+    // A board saved before Help existed has no toolName/description in its
+    // panel params - fall back to the live widget config for those.
+    const fallbackCfg = widgetConfig.find((c) => c.type === widgetType);
+    const toolName = props.params.toolName ?? fallbackCfg?.name ?? name;
+    const description = props.params.description ?? fallbackCfg?.description ?? '';
     const [colors] = useAppColors();
     const containerRef = React.useRef<HTMLDivElement>(null);
     const [settingsIsOpen, setSettingsOpen] = React.useState(false);
     const [saveAsIsOpen, setSaveAsOpen] = React.useState(false);
+    const [helpIsOpen, setHelpOpen] = React.useState(false);
     const currentSettings = props.params.currentSettings || getDefaultSettings(settingsConfig);
 
     const saveSettings = (sts: Record<string, any>) => {
@@ -34,6 +41,7 @@ const WidgetPanel: React.FC<IDockviewPanelProps<WidgetPanelParams>> = (props) =>
         registerPanelActions(wKey, {
             openSettings: () => setSettingsOpen(true),
             openSaveAs: () => setSaveAsOpen(true),
+            openHelp: () => setHelpOpen(true),
         });
         return () => unregisterPanelActions(wKey);
     }, [wKey, registerPanelActions, unregisterPanelActions]);
@@ -65,6 +73,12 @@ const WidgetPanel: React.FC<IDockviewPanelProps<WidgetPanelParams>> = (props) =>
                 isOpen={saveAsIsOpen}
                 setIsOpen={setSaveAsOpen}
                 helperText='Provide a name to save this widget settings'
+            />
+            <HelpModal
+                toolName={toolName}
+                description={description}
+                isOpen={helpIsOpen}
+                setIsOpen={setHelpOpen}
             />
             {WidgetElement ? (
                 // Heavy widgets (ag-grid, Monaco, duckdb) are React.lazy in

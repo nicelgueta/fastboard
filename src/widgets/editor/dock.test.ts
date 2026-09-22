@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampSize, defaultSize, dockComesFirst, isSideDock, normalizeDock, sizeFromPointer } from './dock';
+import { DEFAULT_DOCK, clampSize, defaultSize, dockComesFirst, isSideDock, normalizeDock, sizeFromPointer } from './dock';
 
 const body = { left: 100, top: 50, right: 700, bottom: 450 }; // 600 wide, 400 tall
 
@@ -9,10 +9,10 @@ describe('dock', () => {
         expect(['bottom', 'top', 'left', 'right'].map((d) => dockComesFirst(d as never))).toEqual([false, true, true, false]);
     });
 
-    it('falls back to the bottom for a value that is not a dock', () => {
-        expect(normalizeDock('right')).toBe('right');
-        expect(normalizeDock('diagonal')).toBe('bottom');
-        expect(normalizeDock(undefined)).toBe('bottom');
+    it('falls back to the default dock for a value that is not a dock', () => {
+        expect(normalizeDock('bottom')).toBe('bottom');
+        expect(normalizeDock('diagonal')).toBe(DEFAULT_DOCK);
+        expect(normalizeDock(undefined)).toBe(DEFAULT_DOCK);
     });
 
     it('starts narrow beside the code and short under it', () => {

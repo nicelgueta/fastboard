@@ -6,6 +6,9 @@ import { WidgetSetting } from '../interfaces';
 export interface WidgetPanelParams {
     widgetType: string;
     name: string;
+    /** The tool's name and description from its config (widgetConfig), e.g. "Counter" / "Counts clicks...". Shown in the generic Help modal - see Main.tsx's getTabContextMenuItems and WidgetPanel. */
+    toolName: string;
+    description: string;
     settingsConfig: WidgetSetting[];
     currentSettings?: Record<string, any>;
 }

@@ -159,6 +159,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             const hasSettings = ((panel.params as WidgetPanelParams | undefined)?.settingsConfig?.length ?? 0) > 0;
             if (hasSettings) items.push({ label: 'Settings', action: actions.openSettings });
             items.push({ label: 'Save As', action: actions.openSaveAs });
+            items.push({ label: 'Help', action: actions.openHelp });
         }
         items.push(
             'separator',
@@ -243,6 +244,8 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         const params: WidgetPanelParams = {
             widgetType: type,
             name: displayName,
+            toolName: widgetDict.name,
+            description: widgetDict.description,
             settingsConfig: widgetDict.settings,
             currentSettings: savedSettings,
         };
@@ -378,6 +381,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
             <Box flex="1" minHeight={0} position="relative">
                 <PanelContext.Provider value={{
                     widgetComponentMapping: widgetComponentMapping as WidgetComponentMapping,
+                    widgetConfig,
                     saveWidgetSettings,
                     registerPanelActions,
                     unregisterPanelActions,

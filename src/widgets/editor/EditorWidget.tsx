@@ -18,8 +18,8 @@ import ConnectionBadge from '../ConnectionBadge';
 
 import './monaco-setup';
 import { registerSqlCompletions, tableWidgetsToCompletionSources, CompletionSource } from './sqlCompletions';
-import { runSqlAgainstTarget } from './runSql';
-import { runQplAgainstTarget, QplRunError } from './runQpl';
+import { runSqlAgainstTarget, runSqlRaw } from './runSql';
+import { runQplAgainstTarget, runQplRaw, QplRunError } from './runQpl';
 import EditorOutput from './EditorOutput';
 import { clampSize, defaultSize, dockComesFirst, isSideDock, normalizeDock, sizeFromPointer, type Dock } from './dock';
 import { appendEntry, makeEntry, type OutputEntry, type RunResult } from './outputLog';
@@ -232,32 +232,44 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetWKey, linkedEngine]);
 
+  // A linked table widget that closes (or was never re-found after a board
+  // reload) drops the link rather than leaving it dangling - the editor just
+  // falls back to raw mode, same as if no target had been picked.
+  React.useEffect(() => {
+    if (!isDangling) return;
+    setTargetWKey(undefined);
+    setPersisted({ targetWKey: undefined });
+  }, [isDangling, setPersisted]);
+
+  // No target table widget linked runs in raw mode: the query goes straight
+  // to the shared engine (as if run locally on its CLI) and the result comes
+  // back as text in the output log rather than arrow-ipc pushed to a table.
   const handleRun = React.useCallback(async () => {
     if (language !== 'sql' && language !== 'qpl') return;
-    if (!targetWKey) {
-      record({ ok: false, message: 'Pick a target table widget first.' });
-      return;
-    }
-    if (isDangling || !targetExports) {
-      record({ ok: false, message: 'Linked widget no longer exists - pick another table.' });
-      return;
-    }
     setRunning(true);
     try {
-      const args = [contentRef.current, targetExports, { wKey, name: ownName }] as const;
-      if (language === 'qpl') {
-        const { totalRows, elapsedMs, output, returnedTable } = await runQplAgainstTarget(...args);
+      if (targetWKey && targetExports) {
+        const args = [contentRef.current, targetExports, { wKey, name: ownName }] as const;
+        if (language === 'qpl') {
+          const { totalRows, elapsedMs, output, returnedTable } = await runQplAgainstTarget(...args);
+          record({ ok: true, rows: returnedTable ? totalRows : undefined, elapsedMs, output });
+        } else {
+          const { totalRows, elapsedMs } = await runSqlAgainstTarget(...args);
+          record({ ok: true, rows: totalRows, elapsedMs });
+        }
+      } else if (language === 'qpl') {
+        const { totalRows, elapsedMs, output, returnedTable } = await runQplRaw(contentRef.current);
         record({ ok: true, rows: returnedTable ? totalRows : undefined, elapsedMs, output });
       } else {
-        const { totalRows, elapsedMs } = await runSqlAgainstTarget(...args);
-        record({ ok: true, rows: totalRows, elapsedMs });
+        const { totalRows, elapsedMs, text } = await runSqlRaw(contentRef.current);
+        record({ ok: true, rows: totalRows, elapsedMs, output: text });
       }
     } catch (err: any) {
       record({ ok: false, message: err?.message ?? String(err), output: err instanceof QplRunError ? err.output : undefined });
     } finally {
       setRunning(false);
     }
-  }, [language, targetWKey, isDangling, targetExports, wKey, ownName, record]);
+  }, [language, targetWKey, targetExports, wKey, ownName, record]);
 
   // addCommand captures whatever handleRun was at mount time - keep a ref so
   // Ctrl/Cmd+Enter always calls the latest version.
@@ -348,6 +360,7 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
               minW="90px"
               maxW="220px"
               placeholder="Target table widget..."
+              title="Optional. Without one, Run works in raw mode: queries run directly against the engine and results print as text, the way its CLI would."
               value={targetWKey ?? ''}
               onChange={handleTargetChange}
               color={colors.fore}
@@ -385,7 +398,7 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
                 minW={0}
                 maxW="100%"
                 isLoading={running}
-                isDisabled={isStatic || !targetWKey}
+                isDisabled={isStatic}
                 onClick={handleRun}
                 // the shortcut lives in the tooltip once the label drops it
                 title={RUN_SHORTCUT_LABEL}
@@ -400,7 +413,16 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
                   <Text as="span" isTruncated>{runLabel === 'full' ? RUN_SHORTCUT_LABEL : 'Run'}</Text>
                 )}
               </Button>
-              <ConnectionBadge connected={isConnected} label={isConnected ? targetRecord?.name : undefined} />
+              <ConnectionBadge
+                connected={isConnected}
+                raw={!isConnected}
+                label={isConnected ? targetRecord?.name : undefined}
+                hint={
+                  isConnected
+                    ? `Run pushes results to "${targetRecord?.name}" instead of printing them here.`
+                    : 'No target table linked - Run queries the engine directly and prints the result as text.'
+                }
+              />
               <Button
                 size="sm"
                 flexShrink={0}
@@ -410,11 +432,6 @@ const EditorWidget: React.FC<EditorWidgetProps> = (props) => {
               >
                 Output{!outputOpen && unread > 0 ? ` (${unread})` : ''}
               </Button>
-              {isDangling ? (
-                <Text color={colors.fail} fontSize="sm">
-                  Linked widget no longer exists
-                </Text>
-              ) : null}
               {running ? <Spinner size="sm" color={colors.info} /> : null}
             </>
           ) : null}

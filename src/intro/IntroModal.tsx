@@ -21,7 +21,7 @@ import { INTRO_STEPS } from './steps';
 // users should see the walkthrough again. Stored (not a boolean) under
 // useKvStore('prefs') key 'introSeenVersion' - see IntroModal's dismiss
 // handler and nav-header.tsx's first-run check.
-export const INTRO_VERSION = 3;
+export const INTRO_VERSION = 4;
 export const INTRO_SEEN_KEY = 'introSeenVersion';
 
 interface IntroModalProps {

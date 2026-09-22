@@ -501,7 +501,15 @@ const TableWidget: React.FC<TableWidgetProps> = (props) => {
                         {boundTableName ?? 'query result'}
                         {boundTableName && boundKind !== DEFAULT_ENGINE_KIND ? ` (${boundKind})` : ''}
                     </Text>
-                    <ConnectionBadge connected={!!linkedEditor} label={linkedEditor?.name} />
+                    <ConnectionBadge
+                        connected={!!linkedEditor}
+                        label={linkedEditor?.name}
+                        hint={
+                            linkedEditor
+                                ? `"${linkedEditor.name}" is linked - its query results replace what's shown here.`
+                                : 'No editor linked - this table shows its own loaded data.'
+                        }
+                    />
                     <FBButton
                         typ="info"
                         variant="outline"
