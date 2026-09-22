@@ -19,15 +19,12 @@ import * as monaco from 'monaco-editor';
 import { loader } from '@monaco-editor/react';
 // eslint-disable-next-line import/no-relative-packages
 import editorWorker from '../../../node_modules/monaco-editor/esm/vs/editor/editor.worker.js?worker';
-// eslint-disable-next-line import/no-relative-packages
-import jsonWorker from '../../../node_modules/monaco-editor/esm/vs/language/json/json.worker.js?worker';
-// eslint-disable-next-line import/no-relative-packages
-import tsWorker from '../../../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js?worker';
 
+// SQL and qpl are the only languages offered (see config.ts's EDITOR_LANGUAGES)
+// and neither needs a dedicated language worker, so only the base editor
+// worker is loaded - the json/typescript workers this used to wire up are gone.
 self.MonacoEnvironment = {
-  getWorker(_workerId: string, label: string) {
-    if (label === 'json') return new jsonWorker();
-    if (label === 'typescript' || label === 'javascript') return new tsWorker();
+  getWorker(_workerId: string, _label: string) {
     return new editorWorker();
   },
 };

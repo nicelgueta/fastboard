@@ -9,17 +9,10 @@ import { DefaultLayout } from '../../layout';
 // The language picker lives there too, next to the target table, and is saved
 // with the widget's state rather than as a declarative setting.
 
-/** Languages the editor offers. SQL and qpl are runnable (see EditorWidget). */
+/** Languages the editor offers - both runnable (see EditorWidget). */
 export const EDITOR_LANGUAGES = [
-    { label: 'SQL', value: 'sql' },
+    { label: 'SQL (DuckDB)', value: 'sql' },
     { label: 'qpl', value: 'qpl' },
-    { label: 'JavaScript', value: 'javascript' },
-    { label: 'TypeScript', value: 'typescript' },
-    { label: 'Python', value: 'python' },
-    { label: 'JSON', value: 'json' },
-    { label: 'YAML', value: 'yaml' },
-    { label: 'Markdown', value: 'markdown' },
-    { label: 'Shell', value: 'shell' },
 ] as const;
 
 export const EditorWidgetConfig: BaseWidgetDict = {

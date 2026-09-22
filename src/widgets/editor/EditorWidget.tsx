@@ -29,18 +29,9 @@ import { EDITOR_LANGUAGES } from './config';
 import { RUN_SHORTCUT_LABEL, runLabelMode } from './runButton';
 import useElementWidth from '../../hooks/useElementWidth';
 
-// Languages Monaco's basic-languages bundle (loaded as part of the
-// `monaco-editor` package's default entry) ships highlighting for.
-export type EditorLanguage =
-  | 'sql'
-  | 'qpl'
-  | 'javascript'
-  | 'typescript'
-  | 'python'
-  | 'json'
-  | 'yaml'
-  | 'markdown'
-  | 'shell';
+// The only languages the editor runs: SQL (Monaco's built-in basic-languages
+// highlighting) and qpl (registered by the wasm module - see qplLanguage.ts).
+export type EditorLanguage = 'sql' | 'qpl';
 
 const DEFAULT_SNIPPETS: Partial<Record<EditorLanguage, string>> = {
   sql: '-- SELECT * FROM my_table WHERE x > 5\n',
